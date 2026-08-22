@@ -1,0 +1,313 @@
+import { prisma } from "@/lib/db";
+import { gerarResposta } from "@/lib/ai/engine";
+import { getWhatsAppProvider } from "@/lib/whatsapp/provider";
+import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
+import { criarNotificacao } from "@/lib/notificacoes";
+
+const REUNIAO_DIAS_A_FRENTE = 2;
+
+// A IA não responde na hora — espera um tempo aleatório (parece mais humano
+// e evita que o lead perceba um robô respondendo instantaneamente). O tempo
+// varia a cada mensagem, nunca é fixo.
+const RESPOSTA_IA_DELAY_MIN_MS = 60_000;
+const RESPOSTA_IA_DELAY_MAX_MS = 3 * 60_000;
+
+function delayAleatorioRespostaIa(): number {
+  return RESPOSTA_IA_DELAY_MIN_MS + Math.random() * (RESPOSTA_IA_DELAY_MAX_MS - RESPOSTA_IA_DELAY_MIN_MS);
+}
+
+const DURACAO_REUNIAO_MIN = 60;
+
+/** Valida a data/hora que a IA extraiu da conversa — só aceita se for uma data real no futuro. */
+function dataFuturaValida(iso: string | null): Date | null {
+  if (!iso) return null;
+  const data = new Date(iso);
+  if (Number.isNaN(data.getTime()) || data.getTime() <= Date.now()) return null;
+  return data;
+}
+
+/**
+ * Evita marcar 2 reuniões do mesmo vendedor no mesmo horário: se já existe
+ * uma reunião (de outro lead) desse vendedor dentro da duração padrão do
+ * horário desejado, empurra em blocos de 30min até achar um horário livre.
+ */
+async function proximoHorarioLivre(vendedorId: string, desejado: Date): Promise<Date> {
+  let candidato = new Date(desejado);
+  for (let tentativa = 0; tentativa < 16; tentativa++) {
+    const inicio = candidato;
+    const fim = new Date(candidato.getTime() + DURACAO_REUNIAO_MIN * 60_000);
+    const conflito = await prisma.reuniao.findFirst({
+      where: {
+        vendedorId,
+        status: { in: ["agendada", "confirmada"] },
+        dataHora: { gte: new Date(inicio.getTime() - DURACAO_REUNIAO_MIN * 60_000), lt: fim },
+      },
+    });
+    if (!conflito) return candidato;
+    candidato = new Date(candidato.getTime() + 30 * 60_000);
+  }
+  return candidato;
+}
+
+async function escolherVendedor(empresaId: string) {
+  return prisma.usuario.findFirst({
+    where: { empresaId, papel: "vendedor", ativo: true },
+    orderBy: { criadoEm: "asc" },
+  });
+}
+
+/**
+ * Envia a mensagem já persistida (statusEntrega "enviado" otimista) e
+ * corrige pra "falhou" se o provedor não conseguir entregar de verdade —
+ * sem isso, uma falha de envio (ex: WhatsApp reconectando) ficava invisível:
+ * a mensagem aparecia "enviada" no CRM mesmo sem nunca ter saído.
+ */
+export async function enviarEAtualizarStatus(mensagemId: string, empresaId: string, telefone: string, texto: string) {
+  const provider = await getWhatsAppProvider(empresaId);
+  const resultado = await provider.enviarMensagem(telefone, texto);
+  if (resultado.status === "falhou") {
+    await prisma.mensagem.update({ where: { id: mensagemId }, data: { statusEntrega: "falhou" } });
+    console.error(`[conversationService] falha ao enviar mensagem ${mensagemId} pro WhatsApp`);
+  }
+  return resultado;
+}
+
+/**
+ * Processa uma mensagem recebida de um lead: persiste a mensagem na hora e
+ * agenda a resposta da IA para daqui a 1-5 minutos (ver responderComIa) —
+ * não bloqueia quem chamou (webhook do WhatsApp) esperando minutos.
+ */
+export async function processarMensagemRecebida(leadId: string, textoRecebido: string) {
+  const lead = await prisma.lead.findUniqueOrThrow({
+    where: { id: leadId },
+    include: { etapaAtual: true },
+  });
+
+  const mensagemRecebida = await prisma.mensagem.create({
+    data: { leadId: lead.id, remetente: "lead", conteudo: textoRecebido, statusEntrega: "lido" },
+  });
+
+  if (!lead.iaAtiva) {
+    // Handoff já ocorreu: a IA não responde mais, mensagem só fica registrada
+    // para o vendedor visualizar na timeline.
+    return { respondeuIa: false };
+  }
+
+  const delayMs = delayAleatorioRespostaIa();
+  setTimeout(() => {
+    responderComIa(leadId, mensagemRecebida.id).catch((err) => {
+      console.error("[conversationService] erro ao gerar resposta da IA:", err);
+    });
+  }, delayMs);
+
+  return { respondeuIa: true, agendadoParaMs: Math.round(delayMs) };
+}
+
+/**
+ * Gera e envia a resposta da IA para a mensagem `mensagemGatilhoId`. Roda
+ * depois do delay agendado por processarMensagemRecebida — antes de agir,
+ * reconfere se a IA ainda está ativa e se essa ainda é a mensagem mais
+ * recente do lead (se chegou outra mensagem nova nesse meio tempo, o timer
+ * dela é quem deve responder; se um vendedor já assumiu, não faz nada —
+ * evita a IA duplicar ou atropelar um atendimento humano).
+ */
+async function responderComIa(leadId: string, mensagemGatilhoId: string) {
+  const lead = await prisma.lead.findUniqueOrThrow({
+    where: { id: leadId },
+    include: { etapaAtual: true },
+  });
+  if (!lead.iaAtiva) return;
+
+  const maisRecente = await prisma.mensagem.findFirst({
+    where: { leadId },
+    orderBy: { enviadoEm: "desc" },
+  });
+  if (!maisRecente || maisRecente.id !== mensagemGatilhoId) return;
+
+  const agente = await prisma.agenteIa.findFirst({
+    where: { etapaId: lead.etapaAtualId, ativo: true },
+  });
+
+  const historicoRows = await prisma.mensagem.findMany({
+    where: { leadId: lead.id },
+    orderBy: { enviadoEm: "asc" },
+    take: 30,
+  });
+  const historico = historicoRows
+    .slice(0, -1) // exclui a mensagem-gatilho, passada separadamente abaixo
+    .map((m) => ({ remetente: m.remetente, conteudo: m.conteudo }));
+
+  const decisao = await gerarResposta({
+    leadNome: lead.nome,
+    etapaNome: lead.etapaAtual.nome,
+    etapaOrdem: lead.etapaAtual.ordem,
+    persona: agente?.persona ?? "Você representa uma empresa de tecnologia B2B.",
+    objetivo: agente?.objetivo ?? "Qualificar o lead e conduzi-lo até o agendamento de uma reunião.",
+    historico,
+    mensagemRecebida: maisRecente.conteudo,
+  });
+
+  // A chamada à IA acima pode levar alguns segundos — reconfere agora, bem
+  // antes de enviar de fato, se ninguém pausou a IA ou assumiu a conversa
+  // nesse meio-tempo. Checar só no início da função (como antes) deixava
+  // uma janela onde um "Pausar IA" clicado durante a geração da resposta
+  // era ignorado e a mensagem saía mesmo assim.
+  const leadNoMomentoDoEnvio = await prisma.lead.findUnique({ where: { id: leadId } });
+  if (!leadNoMomentoDoEnvio?.iaAtiva) return;
+
+  const iaMensagem = await prisma.mensagem.create({
+    data: { leadId: lead.id, remetente: "ia", conteudo: decisao.resposta, statusEntrega: "enviado" },
+  });
+
+  await enviarEAtualizarStatus(iaMensagem.id, lead.empresaId, lead.telefone, decisao.resposta);
+
+  let etapaFinal = lead.etapaAtual;
+  let iaAtivaFinal: boolean = lead.iaAtiva;
+  let statusFinal = lead.status;
+  let vendedorIdFinal = lead.vendedorId;
+  let reuniaoCriada = null as Awaited<ReturnType<typeof prisma.reuniao.create>> | null;
+
+  if (decisao.marcarPerdido) {
+    statusFinal = "perdido";
+    iaAtivaFinal = false;
+    void criarNotificacao(lead.empresaId, {
+      tipo: "conversa_mudou_etapa",
+      titulo: `${lead.nome} marcado como perdido`,
+      corpo: decisao.motivoTransicao || "A IA encerrou o atendimento.",
+      leadId: lead.id,
+    });
+  } else if (decisao.avancarEtapa || decisao.sugerirReuniao) {
+    const proximaEtapa = decisao.sugerirReuniao
+      ? await prisma.etapaFunil.findFirst({
+          where: { empresaId: lead.empresaId, tipo: "funil" },
+          orderBy: { ordem: "desc" },
+        })
+      : await prisma.etapaFunil.findFirst({
+          where: { empresaId: lead.empresaId, tipo: "funil", ordem: { gt: lead.etapaAtual.ordem } },
+          orderBy: { ordem: "asc" },
+        });
+
+    if (proximaEtapa && proximaEtapa.id !== lead.etapaAtualId) {
+      await prisma.historicoEtapa.updateMany({
+        where: { leadId: lead.id, saiuEm: null },
+        data: { saiuEm: new Date() },
+      });
+      await prisma.historicoEtapa.create({
+        data: { leadId: lead.id, etapaId: proximaEtapa.id, motivoTransicao: decisao.motivoTransicao },
+      });
+      etapaFinal = proximaEtapa;
+      void criarNotificacao(lead.empresaId, {
+        tipo: "conversa_mudou_etapa",
+        titulo: `${lead.nome} avançou para ${proximaEtapa.nome}`,
+        corpo: decisao.motivoTransicao || "A IA avançou o lead de etapa.",
+        leadId: lead.id,
+      });
+
+      if (proximaEtapa.handoffHumano) {
+        iaAtivaFinal = false;
+        if (!vendedorIdFinal) {
+          const vendedor = await escolherVendedor(lead.empresaId);
+          vendedorIdFinal = vendedor?.id ?? null;
+        }
+        void criarNotificacao(lead.empresaId, {
+          tipo: "conversa_mudou_etapa",
+          titulo: `${lead.nome} precisa de atendimento humano`,
+          corpo: `A IA pausou automaticamente na etapa "${proximaEtapa.nome}".`,
+          leadId: lead.id,
+        });
+      }
+    }
+
+    if (decisao.sugerirReuniao) {
+      let dataHora = dataFuturaValida(decisao.dataHoraSugerida);
+      if (!dataHora) {
+        // Lead não especificou dia/horário — usa o padrão de "daqui a alguns dias, de manhã".
+        dataHora = new Date();
+        dataHora.setDate(dataHora.getDate() + REUNIAO_DIAS_A_FRENTE);
+        dataHora.setHours(10, 0, 0, 0);
+      }
+
+      if (vendedorIdFinal) {
+        dataHora = await proximoHorarioLivre(vendedorIdFinal, dataHora);
+      }
+
+      // Se esse lead já tem uma reunião em aberto (ex: outra mensagem da mesma
+      // conversa também disparou sugerir_reuniao), reagenda em vez de duplicar.
+      const reuniaoExistente = await prisma.reuniao.findFirst({
+        where: { leadId: lead.id, status: { in: ["agendada", "confirmada"] } },
+        orderBy: { criadoEm: "desc" },
+      });
+
+      reuniaoCriada = reuniaoExistente
+        ? await prisma.reuniao.update({
+            where: { id: reuniaoExistente.id },
+            data: { dataHora, vendedorId: vendedorIdFinal },
+          })
+        : await prisma.reuniao.create({
+            data: {
+              leadId: lead.id,
+              vendedorId: vendedorIdFinal,
+              dataHora,
+              status: "agendada",
+              resultado: "pendente",
+              modalidade: "whatsapp",
+            },
+          });
+
+      void sincronizarReuniaoComGoogle(reuniaoCriada.id);
+      void criarNotificacao(lead.empresaId, {
+        tipo: "conversa_mudou_etapa",
+        titulo: `Reunião agendada com ${lead.nome}`,
+        corpo: `Marcada para ${dataHora.toLocaleString("pt-BR")}.`,
+        leadId: lead.id,
+        reuniaoId: reuniaoCriada.id,
+      });
+    }
+  }
+
+  const leadAtualizado = await prisma.lead.update({
+    where: { id: lead.id },
+    data: {
+      etapaAtualId: etapaFinal.id,
+      iaAtiva: iaAtivaFinal,
+      status: statusFinal,
+      vendedorId: vendedorIdFinal,
+    },
+    include: { etapaAtual: true },
+  });
+
+  return { respondeuIa: true, mensagem: iaMensagem, lead: leadAtualizado, reuniao: reuniaoCriada };
+}
+
+/**
+ * Dispara a primeira mensagem automática assim que um lead é criado
+ * (seção 2, passo 2 do descritivo técnico).
+ */
+export async function dispararPrimeiraMensagem(leadId: string) {
+  const lead = await prisma.lead.findUniqueOrThrow({
+    where: { id: leadId },
+    include: { etapaAtual: true },
+  });
+
+  const agente = await prisma.agenteIa.findFirst({
+    where: { etapaId: lead.etapaAtualId, ativo: true },
+  });
+
+  const decisao = await gerarResposta({
+    leadNome: lead.nome,
+    etapaNome: lead.etapaAtual.nome,
+    etapaOrdem: lead.etapaAtual.ordem,
+    persona: agente?.persona ?? "Você representa uma empresa de tecnologia B2B.",
+    objetivo: agente?.objetivo ?? "Dar boas-vindas ao lead e entender o que ele precisa.",
+    historico: [],
+    mensagemRecebida: "(novo lead — envie a primeira mensagem de boas-vindas)",
+  });
+
+  const mensagem = await prisma.mensagem.create({
+    data: { leadId: lead.id, remetente: "ia", conteudo: decisao.resposta, statusEntrega: "enviado" },
+  });
+
+  await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, decisao.resposta);
+
+  return mensagem;
+}

@@ -1,0 +1,405 @@
+// CALINDA — schema do banco de dados
+// Multi-tenant: cada Empresa tem seus próprios usuários, etapas de funil,
+// agentes de IA, leads e configurações. Um usuário super_admin não pertence
+// a nenhuma empresa (empresaId nulo) e enxerga a plataforma inteira.
+// Banco: PostgreSQL (Supabase).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Papel {
+  super_admin
+  admin
+  gestor
+  vendedor
+}
+
+enum TipoEtapa {
+  funil
+  remarketing
+  cliente
+}
+
+enum StatusLead {
+  ativo
+  cliente
+  perdido
+  remarketing
+}
+
+enum RemetenteMensagem {
+  lead
+  ia
+  vendedor
+}
+
+enum StatusEntrega {
+  enviado
+  entregue
+  lido
+  falhou
+}
+
+enum StatusReuniao {
+  agendada
+  confirmada
+  realizada
+  no_show
+  cancelada
+}
+
+enum ModalidadeReuniao {
+  google_meet
+  whatsapp
+}
+
+enum ResultadoReuniao {
+  fechou
+  nao_fechou
+  pendente
+}
+
+enum StatusConvite {
+  pendente
+  aceito
+  expirado
+  revogado
+}
+
+enum StatusWhatsappSessao {
+  desconectado
+  conectando
+  conectado
+}
+
+enum PeriodicidadePlano {
+  mensal
+  anual
+  unico
+}
+
+enum StatusOrcamento {
+  rascunho
+  enviado
+}
+
+enum FormaPagamento {
+  pix
+  cartao
+  boleto
+  dinheiro
+  transferencia
+}
+
+model Empresa {
+  id       String   @id @default(uuid())
+  nome     String
+  ativo    Boolean  @default(true)
+  logoUrl  String?  @db.Text @map("logo_url")
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  usuarios      Usuario[]
+  etapas        EtapaFunil[]
+  leads         Lead[]
+  agentesIa     AgenteIa[]
+  configuracoes  Configuracao[]
+  convites       Convite[]
+  whatsappSessao WhatsappSessao?
+  planos         Plano[]
+  orcamentos     Orcamento[]
+  vendas         Venda[]
+  notificacoes   Notificacao[]
+  pastasArquivo  PastaArquivo[]
+  arquivos       Arquivo[]
+
+  @@map("empresas")
+}
+
+model Usuario {
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senhaHash String?  @map("senha_hash")
+  googleId  String?  @unique @map("google_id")
+  papel     Papel    @default(vendedor)
+  ativo     Boolean  @default(true)
+  avatarCor String   @default("#DC2626") @map("avatar_cor")
+  avatarUrl String?  @db.Text @map("avatar_url")
+  empresaId String?  @map("empresa_id")
+  empresa   Empresa? @relation(fields: [empresaId], references: [id])
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  // Google Calendar (por usuário — cada vendedor conecta o próprio Gmail)
+  googleCalendarAccessToken  String?   @map("google_calendar_access_token")
+  googleCalendarRefreshToken String?   @map("google_calendar_refresh_token")
+  googleCalendarTokenExpiry  DateTime? @map("google_calendar_token_expiry")
+  googleCalendarEmail        String?   @map("google_calendar_email")
+  googleCalendarSyncToken    String?   @map("google_calendar_sync_token")
+
+  leads             Lead[]           @relation("VendedorLeads")
+  reunioes          Reuniao[]        @relation("VendedorReunioes")
+  mensagens         Mensagem[]
+  historicoEdits    HistoricoEtapa[] @relation("VendedorHistorico")
+  convitesEnviados  Convite[]        @relation("ConvidadoPor")
+  orcamentosCriados Orcamento[]
+  vendas            Venda[]
+
+  @@map("usuarios")
+}
+
+model Convite {
+  id             String        @id @default(uuid())
+  email          String
+  papel          Papel
+  empresaId      String?       @map("empresa_id")
+  empresa        Empresa?      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  token          String        @unique
+  status         StatusConvite @default(pendente)
+  convidadoPorId String?       @map("convidado_por_id")
+  convidadoPor   Usuario?      @relation("ConvidadoPor", fields: [convidadoPorId], references: [id])
+  criadoEm       DateTime      @default(now()) @map("criado_em")
+  expiraEm       DateTime      @map("expira_em")
+
+  @@map("convites")
+}
+
+model EtapaFunil {
+  id                String    @id @default(uuid())
+  empresaId         String    @map("empresa_id")
+  empresa           Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome              String
+  ordem             Int
+  cor               String    @default("#6B7280")
+  tipo              TipoEtapa @default(funil)
+  promptIa          String?   @map("prompt_ia")
+  descricaoObjetivo String?   @map("descricao_objetivo")
+  handoffHumano     Boolean   @default(false) @map("handoff_humano")
+
+  leads     Lead[]
+  historico HistoricoEtapa[]
+  agentesIa AgenteIa[]
+
+  @@map("etapas_funil")
+}
+
+model Lead {
+  id           String     @id @default(uuid())
+  empresaId    String     @map("empresa_id")
+  empresa      Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome         String
+  telefone     String
+  email        String?
+  origem       String     @default("Não informado")
+  etapaAtualId String     @map("etapa_atual_id")
+  etapaAtual   EtapaFunil @relation(fields: [etapaAtualId], references: [id])
+  vendedorId   String?    @map("vendedor_id")
+  vendedor     Usuario?   @relation("VendedorLeads", fields: [vendedorId], references: [id])
+  status       StatusLead @default(ativo)
+  iaAtiva      Boolean    @default(true) @map("ia_ativa")
+  entrouEm     DateTime   @default(now()) @map("entrou_em")
+  atualizadoEm DateTime   @updatedAt @map("atualizado_em")
+
+  mensagens     Mensagem[]
+  historico     HistoricoEtapa[]
+  reunioes      Reuniao[]
+  orcamentos    Orcamento[]
+  vendas        Venda[]
+  notificacoes  Notificacao[]
+
+  @@unique([empresaId, telefone])
+  @@map("leads")
+}
+
+model HistoricoEtapa {
+  id              String     @id @default(uuid())
+  leadId          String     @map("lead_id")
+  lead            Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  etapaId         String     @map("etapa_id")
+  etapa           EtapaFunil @relation(fields: [etapaId], references: [id])
+  entrouEm        DateTime   @default(now()) @map("entrou_em")
+  saiuEm          DateTime?  @map("saiu_em")
+  motivoTransicao String     @default("decisao_ia") @map("motivo_transicao")
+  vendedorId      String?    @map("vendedor_id")
+  vendedor        Usuario?   @relation("VendedorHistorico", fields: [vendedorId], references: [id])
+
+  @@map("historico_etapas")
+}
+
+model Mensagem {
+  id            String            @id @default(uuid())
+  leadId        String            @map("lead_id")
+  lead          Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  remetente     RemetenteMensagem
+  conteudo      String
+  enviadoEm     DateTime          @default(now()) @map("enviado_em")
+  statusEntrega StatusEntrega     @default(enviado) @map("status_entrega")
+  vendedorId    String?           @map("vendedor_id")
+  vendedor      Usuario?          @relation(fields: [vendedorId], references: [id])
+
+  @@map("mensagens")
+}
+
+model Reuniao {
+  id             String           @id @default(uuid())
+  leadId         String           @map("lead_id")
+  lead           Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  vendedorId     String?          @map("vendedor_id")
+  vendedor       Usuario?         @relation("VendedorReunioes", fields: [vendedorId], references: [id])
+  dataHora       DateTime         @map("data_hora")
+  status         StatusReuniao    @default(agendada)
+  resultado      ResultadoReuniao @default(pendente)
+  linkCalendario String?          @map("link_calendario")
+  googleEventId  String?          @map("google_event_id")
+  modalidade     ModalidadeReuniao @default(whatsapp)
+  lembrete1hEnviado      Boolean  @default(false) @map("lembrete_1h_enviado")
+  lembrete15minEnviado   Boolean  @default(false) @map("lembrete_15min_enviado")
+  lembreteInicioEnviado  Boolean  @default(false) @map("lembrete_inicio_enviado")
+  criadoEm       DateTime         @default(now()) @map("criado_em")
+
+  notificacoes Notificacao[]
+
+  @@map("reunioes")
+}
+
+model AgenteIa {
+  id        String     @id @default(uuid())
+  empresaId String     @map("empresa_id")
+  empresa   Empresa    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome      String
+  persona   String
+  objetivo  String
+  etapaId   String     @map("etapa_id")
+  etapa     EtapaFunil @relation(fields: [etapaId], references: [id])
+  modeloLlm String     @default("claude-sonnet") @map("modelo_llm")
+  ativo     Boolean    @default(true)
+
+  @@map("agentes_ia")
+}
+
+model Configuracao {
+  id        String  @id @default(uuid())
+  empresaId String  @map("empresa_id")
+  empresa   Empresa @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  chave     String
+  valor     String
+
+  @@unique([empresaId, chave])
+  @@map("configuracoes")
+}
+
+model WhatsappSessao {
+  id              String                @id @default(uuid())
+  empresaId       String                @unique @map("empresa_id")
+  empresa         Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  status          StatusWhatsappSessao  @default(desconectado)
+  numeroConectado String?               @map("numero_conectado")
+  atualizadoEm    DateTime              @updatedAt @map("atualizado_em")
+
+  @@map("whatsapp_sessoes")
+}
+
+model Plano {
+  id            String             @id @default(uuid())
+  empresaId     String             @map("empresa_id")
+  empresa       Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome          String
+  descricao     String?
+  valor         Decimal            @db.Decimal(12, 2)
+  periodicidade PeriodicidadePlano @default(mensal)
+  ativo         Boolean            @default(true)
+  criadoEm      DateTime           @default(now()) @map("criado_em")
+
+  orcamentos Orcamento[]
+
+  @@map("planos")
+}
+
+model Orcamento {
+  id          String          @id @default(uuid())
+  empresaId   String          @map("empresa_id")
+  empresa     Empresa         @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  leadId      String          @map("lead_id")
+  lead        Lead            @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  planoId     String?         @map("plano_id")
+  plano       Plano?          @relation(fields: [planoId], references: [id])
+  valor       Decimal         @db.Decimal(12, 2)
+  observacoes String?
+  status      StatusOrcamento @default(rascunho)
+  criadoPorId String?         @map("criado_por_id")
+  criadoPor   Usuario?        @relation(fields: [criadoPorId], references: [id])
+  criadoEm    DateTime        @default(now()) @map("criado_em")
+
+  @@map("orcamentos")
+}
+
+model Venda {
+  id                 String         @id @default(uuid())
+  empresaId          String         @map("empresa_id")
+  empresa            Empresa        @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  leadId             String?        @map("lead_id")
+  lead               Lead?          @relation(fields: [leadId], references: [id])
+  vendedorId         String?        @map("vendedor_id")
+  vendedor           Usuario?       @relation(fields: [vendedorId], references: [id])
+  valor              Decimal        @db.Decimal(12, 2)
+  quantidade         Int            @default(1)
+  formaPagamento     FormaPagamento @map("forma_pagamento")
+  recorrente         Boolean        @default(false)
+  proximaCobrancaEm  DateTime?      @map("proxima_cobranca_em")
+  comissaoIntegral   Boolean        @default(true) @map("comissao_integral")
+  comissaoPercentual Decimal?       @db.Decimal(5, 2) @map("comissao_percentual")
+  dataPagamento      DateTime       @default(now()) @map("data_pagamento")
+  criadoEm           DateTime       @default(now()) @map("criado_em")
+
+  @@map("vendas")
+}
+
+model Notificacao {
+  id        String   @id @default(uuid())
+  empresaId String   @map("empresa_id")
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  tipo      String
+  titulo    String
+  corpo     String
+  leadId    String?  @map("lead_id")
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  reuniaoId String?  @map("reuniao_id")
+  reuniao   Reuniao? @relation(fields: [reuniaoId], references: [id], onDelete: SetNull)
+  lida      Boolean  @default(false)
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  @@map("notificacoes")
+}
+
+model PastaArquivo {
+  id        String    @id @default(uuid())
+  empresaId String    @map("empresa_id")
+  empresa   Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome      String
+  criadoEm  DateTime  @default(now()) @map("criado_em")
+
+  arquivos Arquivo[]
+
+  @@map("pastas_arquivo")
+}
+
+model Arquivo {
+  id           String       @id @default(uuid())
+  empresaId    String       @map("empresa_id")
+  empresa      Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  pastaId      String       @map("pasta_id")
+  pasta        PastaArquivo @relation(fields: [pastaId], references: [id], onDelete: Cascade)
+  nome         String
+  storagePath  String       @map("storage_path")
+  tamanhoBytes Int          @map("tamanho_bytes")
+  mimeType     String       @map("mime_type")
+  criadoPorId  String?      @map("criado_por_id")
+  criadoEm     DateTime     @default(now()) @map("criado_em")
+
+  @@map("arquivos")
+}
