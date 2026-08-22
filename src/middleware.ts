@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_COOKIE } from "@/lib/auth";
+import { AUTH_COOKIE } from "@/lib/authCookie";
 
 const PUBLIC_PATHS = ["/login", "/convite"];
 

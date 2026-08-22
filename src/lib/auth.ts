@@ -1,5 +1,8 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { AUTH_COOKIE } from "@/lib/authCookie";
+
+export { AUTH_COOKIE };
 
 const JWT_SECRET = process.env.JWT_SECRET || "assiz-crm-dev-secret";
 const JWT_EXPIRES_IN = "7d";
@@ -33,5 +36,3 @@ export async function hashPassword(senha: string): Promise<string> {
 export async function comparePassword(senha: string, hash: string): Promise<boolean> {
   return bcrypt.compare(senha, hash);
 }
-
-export const AUTH_COOKIE = "assiz_token";
