@@ -78,6 +78,64 @@ async function gerarComGemini(historico: TurnoOnboarding[], etapasExistentes: st
   };
 }
 
+// --- Apresentação pessoal (por usuário, não por empresa) ---
+//
+// Diferente do onboarding acima (entrevista sobre o negócio pra montar
+// funil+agentes, uma vez por empresa), essa é uma conversa curtinha que
+// roda no primeiro login de QUALQUER usuário novo — mesmo numa empresa que
+// já foi configurada por outra pessoa. Não propõe nada estruturado, só
+// pergunta 2-3 coisas (como prefere ser chamado, o que vai fazer no
+// sistema no dia a dia) e termina com uma mensagem de boas-vindas.
+
+export type RespostaApresentacao = { resposta: string; concluido: boolean };
+
+const SYSTEM_PROMPT_PESSOAL = (nome: string, papel: string) => `Você é o assistente de boas-vindas do CALINDA, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
+
+A empresa dessa pessoa já está configurada (funil e agentes de IA já existem) — sua única tarefa aqui é dar boas-vindas e conhecer rapidinho ${nome} (papel no sistema: ${papel}), não configurar nada.
+
+Faça no máximo 2 perguntas curtas e naturais (uma por vez), por exemplo: como prefere ser chamado(a) no dia a dia, e o que pretende fazer mais no CALINDA (ex: acompanhar leads, conversar com clientes, ver relatórios). Depois disso, encerre com "concluido": true e uma mensagem breve e calorosa de boas-vindas, mencionando por onde ela pode começar de acordo com o papel dela (ex: vendedor → tela de Leads/Conversas; admin/gestor → Dashboard/Relatórios).
+
+Responda SEMPRE em português (pt-BR) e SOMENTE em JSON válido, no formato:
+{"resposta": string, "concluido": boolean}`;
+
+export async function gerarApresentacaoPessoal(
+  historico: TurnoOnboarding[],
+  nome: string,
+  papel: string
+): Promise<RespostaApresentacao> {
+  try {
+    const contents: GeminiContent[] =
+      historico.length === 0
+        ? [{ role: "user", parts: [{ text: "(início da conversa — dê boas-vindas breves e faça a primeira pergunta)" }] }]
+        : historico.map((t) => ({
+            role: t.autor === "usuario" ? ("user" as const) : ("model" as const),
+            parts: [{ text: t.texto }],
+          }));
+    const parsed = await chamarGemini(SYSTEM_PROMPT_PESSOAL(nome, papel), contents);
+    return {
+      resposta: String(parsed.resposta ?? `Bem-vindo(a) ao CALINDA, ${nome}!`),
+      concluido: Boolean(parsed.concluido),
+    };
+  } catch (err) {
+    console.error("[onboardingEngine] Falha ao chamar provedor de IA (apresentação pessoal), usando roteiro fixo:", err);
+    return simularApresentacao(historico, nome);
+  }
+}
+
+function simularApresentacao(historico: TurnoOnboarding[], nome: string): RespostaApresentacao {
+  const respostasUsuario = historico.filter((t) => t.autor === "usuario").length;
+  if (respostasUsuario === 0) {
+    return {
+      resposta: `Oi, ${nome}! Que bom ter você por aqui. O que você pretende fazer mais no CALINDA no dia a dia — acompanhar leads, conversar com clientes, ou olhar relatórios?`,
+      concluido: false,
+    };
+  }
+  return {
+    resposta: `Perfeito, já te conheço um pouco melhor! Qualquer dúvida é só chamar o suporte em Configurações. Bom trabalho, ${nome}! 🙂`,
+    concluido: true,
+  };
+}
+
 // --- Roteiro fixo (sem GEMINI_API_KEY configurada) ---
 
 const PERGUNTAS_FIXAS = [

@@ -24,3 +24,21 @@ export async function marcarOnboarding(empresaId: string, valor: "concluido" | "
     update: { valor },
   });
 }
+
+/**
+ * Diferente do onboarding da empresa (funil + agentes, uma vez só por
+ * empresa), esse é por USUÁRIO — dispara no primeiro login de qualquer
+ * pessoa nova, mesmo numa empresa que já foi configurada por outra pessoa.
+ * É uma apresentação curta, não remonta funil/agentes.
+ */
+export async function precisaOnboardingPessoal(usuarioId: string): Promise<boolean> {
+  const usuario = await prisma.usuario.findUnique({
+    where: { id: usuarioId },
+    select: { onboardingPessoalConcluido: true },
+  });
+  return !usuario?.onboardingPessoalConcluido;
+}
+
+export async function marcarOnboardingPessoal(usuarioId: string): Promise<void> {
+  await prisma.usuario.update({ where: { id: usuarioId }, data: { onboardingPessoalConcluido: true } });
+}

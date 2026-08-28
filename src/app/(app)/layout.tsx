@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getEmpresaAtivaId } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
-import { precisaOnboarding } from "@/lib/onboarding";
+import { precisaOnboarding, precisaOnboardingPessoal } from "@/lib/onboarding";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EmpresaBanner } from "@/components/features/EmpresaBanner";
 
@@ -19,13 +19,15 @@ export default async function RouteLayout({ children }: { children: React.ReactN
   // Onboarding é responsabilidade de quem vai usar a empresa no dia a dia
   // (o admin dela) — o super_admin só cria/configura o acesso, não deve
   // ser jogado pro assistente de IA ao entrar numa empresa nova.
-  if (
-    empresaAtivaId &&
-    session.papel !== "vendedor" &&
-    session.papel !== "super_admin" &&
-    (await precisaOnboarding(empresaAtivaId))
-  ) {
-    redirect("/onboarding");
+  if (empresaAtivaId && session.papel !== "super_admin") {
+    const precisaConfigurarEmpresa = session.papel !== "vendedor" && (await precisaOnboarding(empresaAtivaId));
+    if (precisaConfigurarEmpresa) {
+      // Empresa ainda não tem funil/agentes — admin/gestor monta do zero.
+      redirect("/onboarding");
+    } else if (await precisaOnboardingPessoal(session.id)) {
+      // Empresa já configurada, mas essa pessoa é nova aqui — apresentação curta.
+      redirect("/onboarding?modo=pessoal");
+    }
   }
 
   const empresa = empresaAtivaId

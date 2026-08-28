@@ -131,6 +131,7 @@ model Usuario {
   ativo     Boolean  @default(true)
   avatarCor String   @default("#DC2626") @map("avatar_cor")
   avatarUrl String?  @db.Text @map("avatar_url")
+  onboardingPessoalConcluido Boolean @default(false) @map("onboarding_pessoal_concluido")
   empresaId String?  @map("empresa_id")
   empresa   Empresa? @relation(fields: [empresaId], references: [id])
   criadoEm  DateTime @default(now()) @map("criado_em")
