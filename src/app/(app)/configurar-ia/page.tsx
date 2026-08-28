@@ -61,6 +61,18 @@ export default function ConfigurarIaPage() {
           onSalvo={() => mutate()}
         />
 
+        <TextoLongoCard
+          key={`remarketing-${data ? "carregado" : "carregando"}`}
+          icone={Repeat2}
+          titulo="Mensagem de remarketing"
+          descricao='Enviada automaticamente pro lead reengajar, exatamente como escrita aqui — use {nome} e {empresa}. Deixe em branco pra IA gerar a mensagem sozinha a cada vez, olhando o histórico da conversa.'
+          chave="remarketing_mensagem_template"
+          valorInicial={data?.configuracoes.remarketing_mensagem_template ?? ""}
+          placeholder="Oi, {nome}! Passando pra saber se ainda tem interesse em falar com a gente na {empresa}..."
+          podeEditar={podeEditar}
+          onSalvo={() => mutate()}
+        />
+
         <IntervaloRemarketingCard
           key={`intervalo-${data ? "carregado" : "carregando"}`}
           valorInicial={data?.configuracoes.remarketing_intervalo_dias ?? "3"}

@@ -22,36 +22,55 @@ async function intervaloDiasDaEmpresa(empresaId: string): Promise<number> {
  * lead (etapaAtualId já aponta pra ela, ver POST /api/reunioes/[id]).
  */
 export async function enviarReengajamentoRemarketing(leadId: string) {
-  const lead = await comRetryConexao(() => prisma.lead.findUniqueOrThrow({ where: { id: leadId } }));
+  const lead = await comRetryConexao(() =>
+    prisma.lead.findUniqueOrThrow({ where: { id: leadId }, include: { empresa: true } })
+  );
   if (lead.status !== "remarketing" || !lead.iaAtiva) return null;
 
-  const agente = await comRetryConexao(() =>
-    prisma.agenteIa.findFirst({ where: { etapaId: lead.etapaAtualId, ativo: true } })
+  const configTemplate = await comRetryConexao(() =>
+    prisma.configuracao.findUnique({
+      where: { empresaId_chave: { empresaId: lead.empresaId, chave: "remarketing_mensagem_template" } },
+    })
   );
 
-  const historicoRows = await comRetryConexao(() =>
-    prisma.mensagem.findMany({ where: { leadId: lead.id }, orderBy: { enviadoEm: "asc" }, take: 30 })
-  );
-  const historico = historicoRows.map((m) => ({ remetente: m.remetente, conteudo: m.conteudo }));
+  let texto: string;
+  let desistir = false;
 
-  const diasSemContato = Math.floor((Date.now() - lead.atualizadoEm.getTime()) / 86_400_000);
+  if (configTemplate?.valor) {
+    // Mensagem configurada na tela Configurar IA — enviada tal como
+    // escrita (mesmo padrão de primeira_mensagem_template), sem a IA
+    // decidir se desiste de reengajar; ela só decide isso quando está
+    // gerando a mensagem sozinha (branch abaixo).
+    texto = configTemplate.valor.replaceAll("{nome}", lead.nome.split(" ")[0]).replaceAll("{empresa}", lead.empresa.nome);
+  } else {
+    const agente = await comRetryConexao(() =>
+      prisma.agenteIa.findFirst({ where: { etapaId: lead.etapaAtualId, ativo: true } })
+    );
+    const historicoRows = await comRetryConexao(() =>
+      prisma.mensagem.findMany({ where: { leadId: lead.id }, orderBy: { enviadoEm: "asc" }, take: 30 })
+    );
+    const historico = historicoRows.map((m) => ({ remetente: m.remetente, conteudo: m.conteudo }));
+    const diasSemContato = Math.floor((Date.now() - lead.atualizadoEm.getTime()) / 86_400_000);
 
-  const decisao = await gerarReengajamento({
-    leadNome: lead.nome,
-    persona: agente?.persona ?? "Você representa uma empresa de tecnologia B2B.",
-    objetivo: agente?.objetivo ?? "Reconquistar o lead e reativar o interesse dele.",
-    historico,
-    diasSemContato,
-  });
+    const decisao = await gerarReengajamento({
+      leadNome: lead.nome,
+      persona: agente?.persona ?? `Você representa a ${lead.empresa.nome}.`,
+      objetivo: agente?.objetivo ?? "Reconquistar o lead e reativar o interesse dele.",
+      historico,
+      diasSemContato,
+    });
+    texto = decisao.mensagem;
+    desistir = decisao.desistir;
+  }
 
   const mensagem = await comRetryConexao(() =>
     prisma.mensagem.create({
-      data: { leadId: lead.id, remetente: "ia", conteudo: decisao.mensagem, statusEntrega: "enviado" },
+      data: { leadId: lead.id, remetente: "ia", conteudo: texto, statusEntrega: "enviado" },
     })
   );
-  await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, decisao.mensagem);
+  await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, texto);
 
-  if (decisao.desistir) {
+  if (desistir) {
     await comRetryConexao(() =>
       prisma.lead.update({ where: { id: lead.id }, data: { status: "perdido", iaAtiva: false } })
     );

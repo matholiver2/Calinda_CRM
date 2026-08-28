@@ -219,15 +219,27 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
       leadId: lead.id,
     });
   } else if (decisao.avancarEtapa || decisao.sugerirReuniao) {
-    const proximaEtapa = decisao.sugerirReuniao
-      ? await prisma.etapaFunil.findFirst({
-          where: { empresaId: lead.empresaId, tipo: "funil" },
-          orderBy: { ordem: "desc" },
-        })
-      : await prisma.etapaFunil.findFirst({
-          where: { empresaId: lead.empresaId, tipo: "funil", ordem: { gt: lead.etapaAtual.ordem } },
-          orderBy: { ordem: "asc" },
-        });
+    // Lead fora do funil normal (remarketing, ou já "cliente") respondendo
+    // de novo — a ordem da etapa atual (ex: remarketing = 99) não é
+    // comparável com a ordem das etapas de funil, então "avançar" aqui
+    // significa reentrar no funil pela primeira etapa, não achar uma etapa
+    // de ordem maior (que não existiria e travava o lead no remarketing
+    // pra sempre, mesmo ele respondendo e a IA querendo prosseguir).
+    const proximaEtapa =
+      decisao.sugerirReuniao
+        ? await prisma.etapaFunil.findFirst({
+            where: { empresaId: lead.empresaId, tipo: "funil" },
+            orderBy: { ordem: "desc" },
+          })
+        : lead.etapaAtual.tipo === "funil"
+          ? await prisma.etapaFunil.findFirst({
+              where: { empresaId: lead.empresaId, tipo: "funil", ordem: { gt: lead.etapaAtual.ordem } },
+              orderBy: { ordem: "asc" },
+            })
+          : await prisma.etapaFunil.findFirst({
+              where: { empresaId: lead.empresaId, tipo: "funil" },
+              orderBy: { ordem: "asc" },
+            });
 
     if (proximaEtapa && proximaEtapa.id !== lead.etapaAtualId) {
       await prisma.historicoEtapa.updateMany({
@@ -238,6 +250,12 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
         data: { leadId: lead.id, etapaId: proximaEtapa.id, motivoTransicao: decisao.motivoTransicao },
       });
       etapaFinal = proximaEtapa;
+      // Mantém Lead.status coerente com o tipo da nova etapa — sem isso, um
+      // lead que saiu do remarketing (status "remarketing") continuava
+      // marcado assim pra sempre mesmo já estando de volta no funil normal,
+      // sumindo da lista de leads ativos e continuando preso no filtro da
+      // tela de Remarketing.
+      statusFinal = proximaEtapa.tipo === "remarketing" ? "remarketing" : proximaEtapa.tipo === "cliente" ? "cliente" : "ativo";
       void criarNotificacao(lead.empresaId, {
         tipo: "conversa_mudou_etapa",
         titulo: `${lead.nome} avançou para ${proximaEtapa.nome}`,
