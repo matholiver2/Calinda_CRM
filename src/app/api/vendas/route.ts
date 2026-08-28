@@ -53,11 +53,18 @@ export async function POST(req: Request) {
   const formaPagamento = body?.formaPagamento;
   const FORMAS_VALIDAS = ["pix", "cartao", "boleto", "dinheiro", "transferencia"];
 
-  if (!Number.isFinite(valor) || valor <= 0) {
-    return NextResponse.json({ erro: "Valor (maior que zero) é obrigatório" }, { status: 400 });
-  }
-  if (!FORMAS_VALIDAS.includes(formaPagamento)) {
-    return NextResponse.json({ erro: "Forma de pagamento inválida" }, { status: 400 });
+  // Rascunho: salvo quando o usuário fecha o modal sem terminar de preencher
+  // (ver src/app/(app)/vendas/page.tsx) — não exige valor/forma válidos, e
+  // não entra nas somas de receita do Dashboard/Relatórios até ser confirmado.
+  const rascunho = Boolean(body?.rascunho);
+
+  if (!rascunho) {
+    if (!Number.isFinite(valor) || valor <= 0) {
+      return NextResponse.json({ erro: "Valor (maior que zero) é obrigatório" }, { status: 400 });
+    }
+    if (!FORMAS_VALIDAS.includes(formaPagamento)) {
+      return NextResponse.json({ erro: "Forma de pagamento inválida" }, { status: 400 });
+    }
   }
 
   const recorrente = Boolean(body?.recorrente);
@@ -68,14 +75,16 @@ export async function POST(req: Request) {
       empresaId: ctx.empresaId,
       leadId: body?.leadId || null,
       vendedorId: body?.vendedorId || (session.papel === "vendedor" ? session.id : null),
-      valor,
+      valor: Number.isFinite(valor) && valor > 0 ? valor : 0,
       quantidade: Number.isFinite(quantidade) && quantidade > 0 ? quantidade : 1,
-      formaPagamento,
+      formaPagamento: FORMAS_VALIDAS.includes(formaPagamento) ? formaPagamento : "pix",
       recorrente,
       proximaCobrancaEm: recorrente && body?.proximaCobrancaEm ? new Date(body.proximaCobrancaEm) : null,
       comissaoIntegral,
       comissaoPercentual: !comissaoIntegral && body?.comissaoPercentual ? Number(body.comissaoPercentual) : null,
       dataPagamento: body?.dataPagamento ? new Date(body.dataPagamento) : new Date(),
+      status: rascunho ? "rascunho" : "confirmada",
+      comprovantePath: body?.comprovantePath || null,
     },
     include: {
       lead: { select: { id: true, nome: true } },

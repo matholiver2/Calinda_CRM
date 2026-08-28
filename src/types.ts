@@ -115,6 +115,8 @@ export type Venda = {
   comissaoIntegral: boolean;
   comissaoPercentual: number | null;
   dataPagamento: string;
+  status: "rascunho" | "confirmada";
+  comprovantePath: string | null;
   criadoEm: string;
 };
 

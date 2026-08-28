@@ -89,6 +89,11 @@ enum StatusOrcamento {
   enviado
 }
 
+enum StatusVenda {
+  rascunho
+  confirmada
+}
+
 enum FormaPagamento {
   pix
   cartao
@@ -355,6 +360,8 @@ model Venda {
   comissaoIntegral   Boolean        @default(true) @map("comissao_integral")
   comissaoPercentual Decimal?       @db.Decimal(5, 2) @map("comissao_percentual")
   dataPagamento      DateTime       @default(now()) @map("data_pagamento")
+  status             StatusVenda    @default(confirmada)
+  comprovantePath    String?        @map("comprovante_path")
   criadoEm           DateTime       @default(now()) @map("criado_em")
 
   @@map("vendas")

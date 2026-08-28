@@ -26,6 +26,7 @@ export async function GET() {
     where: {
       empresaId: ctx.empresaId,
       dataPagamento: { gte: inicioJanela },
+      status: "confirmada",
       ...(restringirAoVendedor ? { vendedorId: session.id } : {}),
     },
     include: { lead: { select: { nome: true } } },
