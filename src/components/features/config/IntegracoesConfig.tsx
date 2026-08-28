@@ -183,10 +183,10 @@ function ConectarWhatsappDialog({
           Abra o WhatsApp no celular que vai ser usado, vá em Aparelhos conectados → Conectar um aparelho, e
           escaneie o código abaixo.
         </p>
-        <div className="flex h-64 w-64 items-center justify-center rounded-xl border border-border-strong bg-white">
+        <div className="flex h-80 w-80 items-center justify-center rounded-xl border border-border-strong bg-white p-3">
           {data?.qr ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={data.qr} alt="QR code do WhatsApp" className="h-full w-full object-contain p-2" />
+            <img src={data.qr} alt="QR code do WhatsApp" className="h-full w-full object-contain" />
           ) : (
             <p className="px-4 text-xs text-fg-subtle">Gerando QR code...</p>
           )}

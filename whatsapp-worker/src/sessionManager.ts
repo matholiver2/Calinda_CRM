@@ -112,7 +112,9 @@ export async function connect(empresaId: string): Promise<void> {
 
     if (qr) {
       console.log(`[sessionManager] QR gerado para ${empresaId}`);
-      sessao.qr = await QRCode.toDataURL(qr);
+      // width/margin explícitos — o padrão da lib sai pequeno e fica borrado
+      // quando esticado na tela, dificultando escanear com a câmera do celular.
+      sessao.qr = await QRCode.toDataURL(qr, { width: 512, margin: 2, errorCorrectionLevel: "M" });
       sessao.status = "conectando";
       await reportarStatus({ empresaId, status: "conectando" });
     }
