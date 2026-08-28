@@ -231,6 +231,16 @@ async function responderComIa(leadId: string, mensagemGatilhoId: string) {
         dataHora = await proximoHorarioLivre(vendedorIdFinal, dataHora);
       }
 
+      // Se a empresa tem um link de Meet configurado (Configurações > Agenda),
+      // a reunião marcada pela IA já sai como Google Meet em vez de ligação de
+      // WhatsApp — sem isso, toda reunião da IA nascia "whatsapp" mesmo com o
+      // Meet configurado, e o lead nunca recebia o link.
+      const configMeet = await prisma.configuracao.findUnique({
+        where: { empresaId_chave: { empresaId: lead.empresaId, chave: "google_meet_link" } },
+      });
+      const meetLink = configMeet?.valor?.trim() || null;
+      const modalidade: "google_meet" | "whatsapp" = meetLink ? "google_meet" : "whatsapp";
+
       // Se esse lead já tem uma reunião em aberto (ex: outra mensagem da mesma
       // conversa também disparou sugerir_reuniao), reagenda em vez de duplicar.
       const reuniaoExistente = await prisma.reuniao.findFirst({
@@ -241,7 +251,7 @@ async function responderComIa(leadId: string, mensagemGatilhoId: string) {
       reuniaoCriada = reuniaoExistente
         ? await prisma.reuniao.update({
             where: { id: reuniaoExistente.id },
-            data: { dataHora, vendedorId: vendedorIdFinal },
+            data: { dataHora, vendedorId: vendedorIdFinal, modalidade, linkCalendario: meetLink },
           })
         : await prisma.reuniao.create({
             data: {
@@ -250,7 +260,8 @@ async function responderComIa(leadId: string, mensagemGatilhoId: string) {
               dataHora,
               status: "agendada",
               resultado: "pendente",
-              modalidade: "whatsapp",
+              modalidade,
+              linkCalendario: meetLink,
             },
           });
 
@@ -262,6 +273,26 @@ async function responderComIa(leadId: string, mensagemGatilhoId: string) {
         leadId: lead.id,
         reuniaoId: reuniaoCriada.id,
       });
+
+      if (meetLink) {
+        const dataFormatada = dataHora.toLocaleString("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+          weekday: "long",
+          day: "2-digit",
+          month: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const mensagemLink = await prisma.mensagem.create({
+          data: {
+            leadId: lead.id,
+            remetente: "ia",
+            conteudo: `Nossa reunião fica marcada para ${dataFormatada}, pelo Google Meet. Segue o link: ${meetLink}`,
+            statusEntrega: "enviado",
+          },
+        });
+        await enviarEAtualizarStatus(mensagemLink.id, lead.empresaId, lead.telefone, mensagemLink.conteudo);
+      }
     }
   }
 
