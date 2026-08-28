@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
-import { Plus, Building2, Users, ArrowRight, Save } from "lucide-react";
+import { Plus, Building2, Users, ArrowRight, Save, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
-import { fetcher, apiPost, ApiError } from "@/lib/fetcher";
+import { fetcher, apiPost, apiDelete, ApiError } from "@/lib/fetcher";
 
 type Empresa = {
   id: string;
@@ -25,6 +25,7 @@ export default function EmpresasPage() {
   const [criando, setCriando] = useState(false);
   const [entrandoId, setEntrandoId] = useState<string | null>(null);
   const [erroEntrar, setErroEntrar] = useState<string | null>(null);
+  const [excluindo, setExcluindo] = useState<Empresa | null>(null);
   const router = useRouter();
 
   const empresas = data?.empresas ?? [];
@@ -79,15 +80,20 @@ export default function EmpresasPage() {
             <p className="mt-1 flex items-center gap-1.5 text-xs text-fg-subtle">
               <Users className="h-3 w-3" /> {e._count.usuarios} usuários · {e._count.leads} leads
             </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              className="mt-4 w-full"
-              loading={entrandoId === e.id}
-              onClick={() => entrar(e.id)}
-            >
-              Entrar <ArrowRight className="h-3.5 w-3.5" />
-            </Button>
+            <div className="mt-4 flex gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1"
+                loading={entrandoId === e.id}
+                onClick={() => entrar(e.id)}
+              >
+                Entrar <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => setExcluindo(e)} title="Excluir empresa">
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </Card>
         ))}
         {empresas.length === 0 && (
@@ -96,6 +102,7 @@ export default function EmpresasPage() {
       </div>
 
       <NovaEmpresaDialog open={criando} onClose={() => setCriando(false)} />
+      <ExcluirEmpresaDialog empresa={excluindo} onClose={() => setExcluindo(null)} />
     </div>
   );
 }
@@ -144,6 +151,62 @@ function NovaEmpresaDialog({ open, onClose }: { open: boolean; onClose: () => vo
           </Button>
           <Button type="submit" loading={loading}>
             <Save className="h-3.5 w-3.5" /> Criar empresa
+          </Button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+
+function ExcluirEmpresaDialog({ empresa, onClose }: { empresa: Empresa | null; onClose: () => void }) {
+  const [confirmacao, setConfirmacao] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  function fechar() {
+    setConfirmacao("");
+    setErro(null);
+    onClose();
+  }
+
+  if (!empresa) return null;
+
+  async function excluir(e: React.FormEvent) {
+    e.preventDefault();
+    if (!empresa) return;
+    setErro(null);
+    setLoading(true);
+    try {
+      await apiDelete(`/api/empresas/${empresa.id}`, { confirmarNome: confirmacao });
+      mutate("/api/empresas");
+      fechar();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao excluir empresa");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={Boolean(empresa)} onClose={fechar} title="Excluir empresa">
+      <form onSubmit={excluir} className="space-y-4">
+        <p className="text-sm text-fg-muted">
+          Isso apaga <strong className="text-fg">{empresa.nome}</strong> permanentemente: todos os usuários e acessos,
+          leads, conversas, reuniões, vendas, orçamentos e arquivos. Não pode ser desfeito.
+        </p>
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-fg-muted">
+            Digite <strong className="text-fg">{empresa.nome}</strong> para confirmar
+          </label>
+          <Input autoFocus value={confirmacao} onChange={(e) => setConfirmacao(e.target.value)} />
+        </div>
+        {erro && <p className="text-sm text-danger">{erro}</p>}
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={fechar}>
+            Cancelar
+          </Button>
+          <Button type="submit" variant="danger" loading={loading} disabled={confirmacao !== empresa.nome}>
+            <Trash2 className="h-3.5 w-3.5" /> Excluir tudo
           </Button>
         </div>
       </form>

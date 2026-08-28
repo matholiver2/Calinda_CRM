@@ -45,3 +45,34 @@ export async function removerArquivos(paths: string[]) {
   const { error } = await client().storage.from(BUCKET).remove(paths);
   if (error) throw error;
 }
+
+/**
+ * Apaga tudo dentro de um prefixo (ex: todos os arquivos de uma empresa,
+ * `${empresaId}/...`) — lista recursivamente porque o Storage do Supabase
+ * só lista um nível por vez. Usado ao excluir uma empresa por completo.
+ */
+export async function removerTudoComPrefixo(prefixo: string) {
+  const bucket = client().storage.from(BUCKET);
+
+  async function listarArquivosRecursivo(caminho: string): Promise<string[]> {
+    const { data, error } = await bucket.list(caminho, { limit: 1000 });
+    if (error || !data) return [];
+    const arquivos: string[] = [];
+    for (const item of data) {
+      const caminhoItem = `${caminho}/${item.name}`;
+      if (item.id) {
+        // Tem id = é um arquivo de verdade; sem id = é uma "pasta" (prefixo).
+        arquivos.push(caminhoItem);
+      } else {
+        arquivos.push(...(await listarArquivosRecursivo(caminhoItem)));
+      }
+    }
+    return arquivos;
+  }
+
+  const arquivos = await listarArquivosRecursivo(prefixo);
+  if (arquivos.length > 0) {
+    const { error } = await bucket.remove(arquivos);
+    if (error) throw error;
+  }
+}

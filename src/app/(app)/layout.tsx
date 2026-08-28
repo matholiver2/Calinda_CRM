@@ -10,6 +10,14 @@ export default async function RouteLayout({ children }: { children: React.ReactN
   const session = await getSession();
   if (!session) redirect("/login");
 
+  // Conta pode ter sido desativada por um admin depois do login — o JWT
+  // sozinho não sabe disso (ver mesmo check em src/lib/apiAuth.ts). Só
+  // redireciona (cookie não pode ser limpo aqui, fora de Server
+  // Action/Route Handler) — a próxima chamada de API já derruba de vez via
+  // requireSession + o tratamento de 401 em src/lib/fetcher.ts.
+  const usuarioAtivo = await prisma.usuario.findUnique({ where: { id: session.id }, select: { ativo: true } });
+  if (!usuarioAtivo?.ativo) redirect("/login");
+
   const empresaAtivaId = await getEmpresaAtivaId(session);
 
   if (session.papel === "super_admin" && !empresaAtivaId) {

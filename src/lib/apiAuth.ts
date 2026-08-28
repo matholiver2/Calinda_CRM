@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { getEmpresaAtivaId } from "@/lib/tenant";
+import { prisma } from "@/lib/db";
 import type { Papel, SessionPayload } from "@/lib/auth";
 
 export async function requireSession(): Promise<SessionPayload | NextResponse> {
@@ -8,6 +9,15 @@ export async function requireSession(): Promise<SessionPayload | NextResponse> {
   if (!session) {
     return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
   }
+
+  // O JWT sozinho não sabe se o usuário foi desativado depois de logar —
+  // confere no banco a cada chamada pra derrubar o acesso na hora (ver
+  // src/lib/fetcher.ts, que redireciona pro login em qualquer 401).
+  const usuario = await prisma.usuario.findUnique({ where: { id: session.id }, select: { ativo: true } });
+  if (!usuario || !usuario.ativo) {
+    return NextResponse.json({ erro: "Conta desativada" }, { status: 401 });
+  }
+
   return session;
 }
 
