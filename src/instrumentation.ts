@@ -6,11 +6,13 @@
 
 const POLL_INTERVAL_MS = 5 * 60_000;
 const LEMBRETE_INTERVAL_MS = 2 * 60_000;
+const RESPOSTA_IA_POLL_INTERVAL_MS = 20_000;
 
 declare global {
   var __calindaGoogleCalendarPollStarted: boolean | undefined;
   var __calindaRemarketingPollStarted: boolean | undefined;
   var __calindaLembretesPollStarted: boolean | undefined;
+  var __calindaRespostaIaPollStarted: boolean | undefined;
 }
 
 export async function register() {
@@ -47,5 +49,20 @@ export async function register() {
       });
     }, LEMBRETE_INTERVAL_MS);
     console.log("[instrumentation] polling de lembretes de reunião ativo (a cada 2 min)");
+  }
+
+  // Caminho rápido pra quando o processo Next.js roda de longa duração
+  // (dev local, ou hospedagem fora de função serverless) — em produção
+  // serverless, quem garante a resposta da IA é o heartbeat do
+  // whatsapp-worker batendo em /api/cron/tick (ver conversationService.ts).
+  if (!globalThis.__calindaRespostaIaPollStarted) {
+    globalThis.__calindaRespostaIaPollStarted = true;
+    const { pollRespostasIaAgendadas } = await import("@/lib/conversationService");
+    setInterval(() => {
+      pollRespostasIaAgendadas().catch((err) => {
+        console.error("[instrumentation] erro no polling de respostas de IA agendadas:", err);
+      });
+    }, RESPOSTA_IA_POLL_INTERVAL_MS);
+    console.log("[instrumentation] polling de respostas de IA agendadas ativo (a cada 20s)");
   }
 }

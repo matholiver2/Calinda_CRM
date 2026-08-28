@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma, comRetryConexao } from "@/lib/db";
 import { gerarResposta } from "@/lib/ai/engine";
 import { getWhatsAppProvider } from "@/lib/whatsapp/provider";
 import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
@@ -74,8 +74,16 @@ export async function enviarEAtualizarStatus(mensagemId: string, empresaId: stri
 
 /**
  * Processa uma mensagem recebida de um lead: persiste a mensagem na hora e
- * agenda a resposta da IA para daqui a 1-5 minutos (ver responderComIa) —
- * não bloqueia quem chamou (webhook do WhatsApp) esperando minutos.
+ * agenda a resposta da IA para daqui a 1-3 minutos (ver responderComIa).
+ *
+ * O agendamento é salvo no banco (Lead.respostaIaAgendadaPara), não num
+ * setTimeout em memória — um setTimeout não sobrevive entre invocações de
+ * função serverless (Vercel encerra/congela o processo depois da resposta
+ * HTTP), o que fazia a IA nunca responder em produção. Quem efetivamente
+ * dispara a resposta quando chega a hora é pollRespostasIaAgendadas,
+ * chamada tanto pelo poller local (instrumentation.ts, útil em dev/processo
+ * de longa duração) quanto pelo heartbeat do whatsapp-worker — esse sim um
+ * processo persistente de verdade — batendo em /api/cron/tick.
  */
 export async function processarMensagemRecebida(leadId: string, textoRecebido: string) {
   const lead = await prisma.lead.findUniqueOrThrow({
@@ -94,24 +102,58 @@ export async function processarMensagemRecebida(leadId: string, textoRecebido: s
   }
 
   const delayMs = delayAleatorioRespostaIa();
-  setTimeout(() => {
-    responderComIa(leadId, mensagemRecebida.id).catch((err) => {
-      console.error("[conversationService] erro ao gerar resposta da IA:", err);
-    });
-  }, delayMs);
+  const agendadoPara = new Date(Date.now() + delayMs);
+  await prisma.lead.update({
+    where: { id: leadId },
+    data: { respostaIaAgendadaPara: agendadoPara, respostaIaMensagemGatilhoId: mensagemRecebida.id },
+  });
 
-  return { respondeuIa: true, agendadoParaMs: Math.round(delayMs) };
+  return { respondeuIa: true, agendadoParaMs: Math.round(delayMs), agendadoPara };
 }
 
 /**
- * Gera e envia a resposta da IA para a mensagem `mensagemGatilhoId`. Roda
- * depois do delay agendado por processarMensagemRecebida — antes de agir,
- * reconfere se a IA ainda está ativa e se essa ainda é a mensagem mais
- * recente do lead (se chegou outra mensagem nova nesse meio tempo, o timer
- * dela é quem deve responder; se um vendedor já assumiu, não faz nada —
- * evita a IA duplicar ou atropelar um atendimento humano).
+ * Varre leads com resposta de IA agendada cuja hora já chegou e dispara
+ * cada uma. "Reivindica" o lead com um update atômico (compare-and-swap no
+ * respostaIaMensagemGatilhoId) antes de processar — evita duplicar o envio
+ * se o poller local e o heartbeat do worker rodarem quase ao mesmo tempo.
  */
-async function responderComIa(leadId: string, mensagemGatilhoId: string) {
+export async function pollRespostasIaAgendadas() {
+  const agora = new Date();
+  const leadsProntos = await comRetryConexao(() =>
+    prisma.lead.findMany({
+      where: { respostaIaAgendadaPara: { lte: agora }, iaAtiva: true },
+      select: { id: true, respostaIaMensagemGatilhoId: true },
+    })
+  );
+
+  for (const lead of leadsProntos) {
+    if (!lead.respostaIaMensagemGatilhoId) continue;
+    const mensagemGatilhoId = lead.respostaIaMensagemGatilhoId;
+
+    const { count } = await comRetryConexao(() =>
+      prisma.lead.updateMany({
+        where: { id: lead.id, respostaIaMensagemGatilhoId: mensagemGatilhoId },
+        data: { respostaIaAgendadaPara: null, respostaIaMensagemGatilhoId: null },
+      })
+    );
+    if (count === 0) continue; // outro poller já reivindicou esse lead
+
+    try {
+      await responderComIa(lead.id, mensagemGatilhoId);
+    } catch (err) {
+      console.error(`[conversationService] erro ao processar resposta agendada do lead ${lead.id}:`, err);
+    }
+  }
+}
+
+/**
+ * Gera e envia a resposta da IA para a mensagem `mensagemGatilhoId`. Antes
+ * de agir, reconfere se a IA ainda está ativa e se essa ainda é a mensagem
+ * mais recente do lead (se chegou outra mensagem nova nesse meio tempo, o
+ * agendamento dela é quem deve responder; se um vendedor já assumiu, não
+ * faz nada — evita a IA duplicar ou atropelar um atendimento humano).
+ */
+export async function responderComIa(leadId: string, mensagemGatilhoId: string) {
   const lead = await prisma.lead.findUniqueOrThrow({
     where: { id: leadId },
     include: { etapaAtual: true, empresa: true },

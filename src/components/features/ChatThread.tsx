@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
-import { Bot, BotOff, Send, ArrowRightLeft, MessageSquareText, AlertTriangle } from "lucide-react";
+import { Bot, BotOff, Send, ArrowRightLeft, MessageSquareText, AlertTriangle, Clock } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -68,18 +68,21 @@ export function ChatThread({ leadId, compact = false }: { leadId: string; compac
           <p className="truncate text-sm font-semibold text-fg">{lead.nome}</p>
           <Badge color={lead.etapaAtual.cor}>{lead.etapaAtual.nome}</Badge>
         </div>
-        <button
-          onClick={alternarIa}
-          className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-            lead.iaAtiva
-              ? "border-accent bg-accent-soft text-accent hover:bg-accent-soft/70"
-              : "border-border bg-surface-hover text-fg-muted hover:text-fg"
-          )}
-        >
-          {lead.iaAtiva ? <Bot className="h-3.5 w-3.5" /> : <BotOff className="h-3.5 w-3.5" />}
-          {lead.iaAtiva ? "Pausar IA" : "Retomar IA"}
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <ContagemRespostaIa agendadoPara={lead.respostaIaAgendadaPara} />
+          <button
+            onClick={alternarIa}
+            className={cn(
+              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+              lead.iaAtiva
+                ? "border-accent bg-accent-soft text-accent hover:bg-accent-soft/70"
+                : "border-border bg-surface-hover text-fg-muted hover:text-fg"
+            )}
+          >
+            {lead.iaAtiva ? <Bot className="h-3.5 w-3.5" /> : <BotOff className="h-3.5 w-3.5" />}
+            {lead.iaAtiva ? "Pausar IA" : "Retomar IA"}
+          </button>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
@@ -115,6 +118,43 @@ export function ChatThread({ leadId, compact = false }: { leadId: string; compac
         </div>
       </div>
     </Card>
+  );
+}
+
+/** Contagem regressiva até a IA enviar a próxima mensagem (Lead.respostaIaAgendadaPara). */
+function ContagemRespostaIa({ agendadoPara }: { agendadoPara: string | null }) {
+  const [segundosRestantes, setSegundosRestantes] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!agendadoPara) return;
+    const alvo = new Date(agendadoPara).getTime();
+    function tick() {
+      setSegundosRestantes(Math.max(0, Math.round((alvo - Date.now()) / 1000)));
+    }
+    // setState só dentro de callbacks (não direto no corpo do efeito) — o
+    // primeiro tick roda no próximo ciclo pra já mostrar o valor certo sem
+    // esperar 1s pelo primeiro intervalo.
+    const imediato = setTimeout(tick, 0);
+    const intervalo = setInterval(tick, 1000);
+    return () => {
+      clearTimeout(imediato);
+      clearInterval(intervalo);
+    };
+  }, [agendadoPara]);
+
+  if (!agendadoPara || segundosRestantes === null || segundosRestantes <= 0) return null;
+
+  const minutos = Math.floor(segundosRestantes / 60);
+  const segundos = segundosRestantes % 60;
+
+  return (
+    <span
+      title="Tempo até a IA enviar a próxima mensagem"
+      className="flex items-center gap-1 rounded-full border border-border bg-surface-hover px-2.5 py-1.5 text-xs font-medium text-fg-muted"
+    >
+      <Clock className="h-3.5 w-3.5" />
+      {minutos}:{String(segundos).padStart(2, "0")}
+    </span>
   );
 }
 

@@ -211,6 +211,16 @@ model Lead {
   entrouEm     DateTime   @default(now()) @map("entrou_em")
   atualizadoEm DateTime   @updatedAt @map("atualizado_em")
 
+  // Resposta da IA agendada (delay "parece humano" antes de responder) —
+  // persistido no banco porque um setTimeout em memória não sobrevive entre
+  // invocações de função serverless (Vercel). Um poller externo processa
+  // isso quando chega a hora (ver pollRespostasIaAgendadas em
+  // conversationService.ts). respostaIaMensagemGatilhoId identifica qual
+  // mensagem do lead motivou o agendamento, pra não responder de novo se
+  // outra mensagem mais recente já assumiu o agendamento.
+  respostaIaAgendadaPara      DateTime? @map("resposta_ia_agendada_para")
+  respostaIaMensagemGatilhoId String?   @map("resposta_ia_mensagem_gatilho_id")
+
   mensagens     Mensagem[]
   historico     HistoricoEtapa[]
   reunioes      Reuniao[]

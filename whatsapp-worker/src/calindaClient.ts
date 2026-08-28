@@ -25,6 +25,28 @@ export async function encaminharMensagemRecebida(params: {
   }
 }
 
+/**
+ * "Batimento cardíaco" pro app CALINDA — dispara tarefas em segundo plano
+ * que dependem de tempo (resposta da IA agendada, hoje) e que um
+ * setTimeout/setInterval dentro do Next.js na Vercel não executa de forma
+ * confiável (função serverless congela/recicla entre requisições). Este
+ * worker roda como processo persistente (Railway), então é ele quem garante
+ * que o tick acontece de verdade a cada poucos segundos.
+ */
+export async function dispararTick(): Promise<void> {
+  try {
+    const res = await fetch(`${env.calindaBaseUrl}/api/cron/tick`, {
+      method: "POST",
+      headers: { "x-worker-secret": env.workerSecret },
+    });
+    if (!res.ok) {
+      console.error(`[calindaClient] /api/cron/tick respondeu ${res.status}`);
+    }
+  } catch (err) {
+    console.error("[calindaClient] falha ao disparar tick:", err);
+  }
+}
+
 export async function reportarStatus(params: {
   empresaId: string;
   status: "desconectado" | "conectando" | "conectado";

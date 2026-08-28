@@ -31,6 +31,7 @@ export type Lead = {
   iaAtiva: boolean;
   entrouEm: string;
   atualizadoEm: string;
+  respostaIaAgendadaPara: string | null;
   _count?: { mensagens: number };
 };
 
