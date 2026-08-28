@@ -1,66 +1,47 @@
 // Motor de IA do assistente de configuração inicial (onboarding) — uma
-// entrevista curta (não uma conversa de vendas) que termina numa proposta
-// estruturada de etapas de funil + agentes de IA sob medida pro negócio do
-// usuário. Reaproveita a chamada crua ao Gemini de src/lib/ai/engine.ts.
+// entrevista curta (não uma conversa de vendas) que termina numa descrição
+// da empresa (o que vende, pra quem, e como o dono/vendedor fala) usada
+// depois pra dar contexto real aos agentes de IA. Funil e agentes em si são
+// sempre os padrões do sistema (criados na hora que a empresa nasce, ver
+// src/app/api/empresas/route.ts) — onboarding não propõe estrutura nova,
+// só enriquece o contexto que os agentes padrão já usam. Reaproveita a
+// chamada crua ao Gemini de src/lib/ai/engine.ts.
 
 import { chamarGemini, type GeminiContent } from "@/lib/ai/engine";
 
 export type TurnoOnboarding = { autor: "assistente" | "usuario"; texto: string };
 
-export type EtapaProposta = { nome: string; ordem: number; cor: string; descricaoObjetivo: string };
-export type AgenteProposto = { etapaNome: string; nome: string; persona: string; objetivo: string };
-
 export type RespostaOnboarding = {
   resposta: string;
   concluido: boolean;
-  proposta: { etapas: EtapaProposta[]; agentes: AgenteProposto[] } | null;
+  empresaSobre: string | null;
 };
-
-const ARQUETIPOS = `Arquétipos de agente que o CALINDA já usa como referência (o usuário pode querer todos, só alguns, ou variações):
-- Recepção: primeiro contato, dá boas-vindas e entende o que o lead procura.
-- Descoberta/Qualificação: entende a dor, o contexto e se o lead tem perfil pra fechar.
-- Fechamento: propõe reunião/agendamento com um vendedor humano.
-- Remarketing: reengaja quem esfriou ou não fechou depois de uma reunião.`;
 
 const SYSTEM_PROMPT = `Você é o assistente de configuração inicial do CALINDA, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
 
-Sua tarefa é entrevistar a pessoa que acabou de criar a conta, de forma breve e natural (uma pergunta por vez, no máximo 4-5 perguntas no total), para descobrir:
-1. O que a empresa dela vende/faz.
-2. Quem são os leads/clientes típicos.
-3. Como é o processo de vendas hoje (quantas etapas, do primeiro contato até fechar).
-4. Quantos e quais tipos de agente de IA ela quer.
+O funil e os agentes de IA já existem prontos (padrão do sistema) — sua única tarefa aqui é entrevistar rapidinho a pessoa que acabou de criar a conta (de forma breve e natural, uma pergunta por vez, no máximo 3-4 perguntas) pra entender:
+1. O que a empresa dela vende/faz e pra quem (público-alvo típico).
+2. Qual é o tom/jeito de falar da empresa com o cliente (formal, descontraído, técnico, etc).
 
-${ARQUETIPOS}
+Preste atenção em COMO a pessoa escreve nas respostas dela (gírias, formalidade, jeito de pontuar) — isso importa tanto quanto o conteúdo, porque vai virar a "voz" dos agentes de IA da empresa.
 
-Apresente esses arquétipos numa das suas mensagens (de forma resumida, natural, não como uma lista fria) pra ela entender as opções antes de decidir quantos/quais quer.
+Enquanto ainda está reunindo informação, responda com "concluido": false e "empresaSobre": null.
 
-Enquanto ainda está reunindo informação, responda com "concluido": false e "proposta": null.
-
-Quando já tiver o suficiente (não precisa esgotar todas as perguntas se a pessoa já deu contexto rico), responda com "concluido": true e uma "proposta" com:
-- "etapas": lista ordenada de etapas de funil sob medida (nome, ordem começando em 1, cor em hex, descricaoObjetivo — o que a IA deve alcançar nessa etapa), cobrindo do primeiro contato até o fechamento/reunião.
-- "agentes": um agente por etapa relevante (etapaNome deve bater exatamente com o nome de uma etapa da lista acima), com persona (quem é o agente e a empresa, escrito com base no que a pessoa contou) e objetivo (o que ele deve alcançar nessa etapa) — nada de texto genérico, use o contexto real que a pessoa deu.
+Quando já tiver o suficiente, responda com "concluido": true e "empresaSobre": um parágrafo curto (3-5 frases) resumindo o negócio, o público, e sobretudo o tom/estilo de comunicação — escrito de um jeito que sirva como instrução direta pra outra IA imitar essa voz (ex: "Fale de forma descontraída, use poucas formalidades, chame o cliente pelo primeiro nome..."). Use o vocabulário e as expressões que a própria pessoa usou sempre que possível, em vez de generalizar.
 
 Responda SEMPRE em português (pt-BR) e SOMENTE em JSON válido, no formato:
-{"resposta": string, "concluido": boolean, "proposta": {"etapas": [{"nome": string, "ordem": number, "cor": string, "descricaoObjetivo": string}], "agentes": [{"etapaNome": string, "nome": string, "persona": string, "objetivo": string}]} | null}`;
+{"resposta": string, "concluido": boolean, "empresaSobre": string | null}`;
 
-export async function gerarRespostaOnboarding(
-  historico: TurnoOnboarding[],
-  etapasExistentes: string[] = []
-): Promise<RespostaOnboarding> {
+export async function gerarRespostaOnboarding(historico: TurnoOnboarding[]): Promise<RespostaOnboarding> {
   try {
-    return await gerarComGemini(historico, etapasExistentes);
+    return await gerarComGemini(historico);
   } catch (err) {
     console.error("[onboardingEngine] Falha ao chamar provedor de IA, usando roteiro fixo:", err);
     return simular(historico);
   }
 }
 
-async function gerarComGemini(historico: TurnoOnboarding[], etapasExistentes: string[]): Promise<RespostaOnboarding> {
-  const systemPrompt =
-    etapasExistentes.length > 0
-      ? `${SYSTEM_PROMPT}\n\nA empresa já tem estas etapas cadastradas: ${etapasExistentes.join(", ")}. Pode reaproveitar alguma pelo nome exato, ou propor um conjunto novo mais adequado ao que a pessoa descrever — as que não existirem ainda serão criadas.`
-      : SYSTEM_PROMPT;
-
+async function gerarComGemini(historico: TurnoOnboarding[]): Promise<RespostaOnboarding> {
   const contents: GeminiContent[] =
     historico.length === 0
       ? [{ role: "user", parts: [{ text: "(início da conversa — se apresente brevemente e faça a primeira pergunta)" }] }]
@@ -69,12 +50,12 @@ async function gerarComGemini(historico: TurnoOnboarding[], etapasExistentes: st
           parts: [{ text: t.texto }],
         }));
 
-  const parsed = await chamarGemini(systemPrompt, contents);
+  const parsed = await chamarGemini(SYSTEM_PROMPT, contents);
 
   return {
     resposta: String(parsed.resposta ?? "Certo!"),
     concluido: Boolean(parsed.concluido),
-    proposta: (parsed.proposta as RespostaOnboarding["proposta"]) ?? null,
+    empresaSobre: typeof parsed.empresaSobre === "string" ? parsed.empresaSobre : null,
   };
 }
 
@@ -139,54 +120,26 @@ function simularApresentacao(historico: TurnoOnboarding[], nome: string): Respos
 // --- Roteiro fixo (sem GEMINI_API_KEY configurada) ---
 
 const PERGUNTAS_FIXAS = [
-  "Oi! Sou o assistente de configuração do CALINDA. Pra deixar a IA no jeito do seu negócio: o que a sua empresa vende ou oferece?",
-  "Entendi! E quem costuma ser o lead típico que chega até vocês?",
-  "Legal. Como é o processo de vendas hoje — desde o primeiro contato até fechar, quantas etapas mais ou menos vocês seguem?",
-  "Por último: você quer os 4 tipos de agente (Recepção, Qualificação, Fechamento e Remarketing), ou prefere só alguns deles pra começar?",
+  "Oi! Sou o assistente de configuração do CALINDA. Pra deixar a IA no jeito do seu negócio: o que a sua empresa vende ou oferece, e pra quem?",
+  "Entendi! E qual o tom que vocês costumam usar pra falar com o cliente — mais formal, descontraído, técnico?",
 ];
 
 function simular(historico: TurnoOnboarding[]): RespostaOnboarding {
   const respostasUsuario = historico.filter((t) => t.autor === "usuario").length;
 
   if (respostasUsuario < PERGUNTAS_FIXAS.length) {
-    return { resposta: PERGUNTAS_FIXAS[respostasUsuario], concluido: false, proposta: null };
+    return { resposta: PERGUNTAS_FIXAS[respostasUsuario], concluido: false, empresaSobre: null };
   }
 
-  const etapas: EtapaProposta[] = [
-    { nome: "Novo Lead", ordem: 1, cor: "#F87171", descricaoObjetivo: "Primeiro contato e abertura de conversa." },
-    { nome: "Qualificando", ordem: 2, cor: "#FBBF24", descricaoObjetivo: "Entender a dor e o contexto do lead." },
-    {
-      nome: "Reunião Agendada",
-      ordem: 3,
-      cor: "#34D399",
-      descricaoObjetivo: "Propor e confirmar reunião com um vendedor.",
-    },
-  ];
-  const agentes: AgenteProposto[] = [
-    {
-      etapaNome: "Novo Lead",
-      nome: "Agente de Recepção",
-      persona: "Assistente virtual da empresa, tom simpático e direto.",
-      objetivo: "Dar boas-vindas ao lead e entender o que ele procura.",
-    },
-    {
-      etapaNome: "Qualificando",
-      nome: "Agente de Qualificação",
-      persona: "Assistente virtual da empresa, tom consultivo.",
-      objetivo: "Entender a dor do lead e validar se faz sentido seguir.",
-    },
-    {
-      etapaNome: "Reunião Agendada",
-      nome: "Agente de Fechamento",
-      persona: "Assistente virtual da empresa, tom proativo.",
-      objetivo: "Propor e confirmar um horário de reunião com um vendedor.",
-    },
-  ];
+  const respostas = historico.filter((t) => t.autor === "usuario").map((t) => t.texto);
+  const empresaSobre =
+    respostas.length > 0
+      ? `Contexto informado pela empresa: ${respostas.join(" ")}`
+      : "Fale de forma atenciosa e direta ao ponto, sem informações adicionais sobre o negócio.";
 
   return {
-    resposta:
-      "Perfeito, já tenho o que preciso! Montei um funil com 3 etapas e um agente pra cada uma — dá uma olhada e confirma se quiser criar assim.",
+    resposta: "Perfeito, já tenho o que preciso pra deixar a IA no jeito de vocês!",
     concluido: true,
-    proposta: { etapas, agentes },
+    empresaSobre,
   };
 }

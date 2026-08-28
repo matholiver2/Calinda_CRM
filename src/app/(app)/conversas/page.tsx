@@ -27,7 +27,8 @@ export default function ConversasPage() {
   );
   const { data: integracoes, isLoading: carregandoIntegracoes } = useSWR<Integracoes>(
     "/api/integracoes",
-    fetcher
+    fetcher,
+    { refreshInterval: 5000 }
   );
 
   const carregando = carregandoSessao || carregandoIntegracoes;

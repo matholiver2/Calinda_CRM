@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Menu, X, Settings, LogOut } from "lucide-react";
+import { Menu, X, Settings, Sparkles, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
 import { TABS, GROUP_B } from "@/components/layout/navItems";
@@ -81,6 +81,16 @@ export function MobileNavDrawer() {
             </nav>
 
             <div className="space-y-1 border-t border-border p-3">
+              <Link
+                href="/configurar-ia"
+                onClick={() => setAberto(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-[10px] px-3.5 py-2.5 text-sm font-medium transition-colors",
+                  isActive("/configurar-ia") ? "bg-nav-active text-nav-active-foreground" : "text-fg-muted hover:bg-surface-hover hover:text-fg"
+                )}
+              >
+                <Sparkles className="h-4.5 w-4.5" /> Configurar IA
+              </Link>
               <Link
                 href="/configuracoes"
                 onClick={() => setAberto(false)}

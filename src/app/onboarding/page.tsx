@@ -9,9 +9,6 @@ import { apiPost, ApiError } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 
 type Turno = { autor: "assistente" | "usuario"; texto: string };
-type EtapaProposta = { nome: string; ordem: number; cor: string; descricaoObjetivo: string };
-type AgenteProposto = { etapaNome: string; nome: string; persona: string; objetivo: string };
-type Proposta = { etapas: EtapaProposta[]; agentes: AgenteProposto[] };
 
 export default function OnboardingPage() {
   return (
@@ -27,7 +24,7 @@ function OnboardingConteudo() {
   const modoPessoal = params.get("modo") === "pessoal";
 
   const [historico, setHistorico] = useState<Turno[]>([]);
-  const [proposta, setProposta] = useState<Proposta | null>(null);
+  const [empresaSobre, setEmpresaSobre] = useState<string | null>(null);
   const [concluidoPessoal, setConcluidoPessoal] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [carregando, setCarregando] = useState(true);
@@ -47,13 +44,13 @@ function OnboardingConteudo() {
       const resultado = await apiPost<{
         resposta: string;
         concluido: boolean;
-        proposta?: Proposta | null;
+        empresaSobre?: string | null;
       }>(endpointMensagem, { historico: historicoAtual });
 
       setHistorico([...historicoAtual, { autor: "assistente", texto: resultado.resposta }]);
       if (resultado.concluido) {
         if (modoPessoal) setConcluidoPessoal(true);
-        else if (resultado.proposta) setProposta(resultado.proposta);
+        else if (resultado.empresaSobre) setEmpresaSobre(resultado.empresaSobre);
       }
     } catch (err) {
       setErro(err instanceof ApiError ? err.message : "Erro ao conversar com o assistente");
@@ -93,15 +90,15 @@ function OnboardingConteudo() {
   }
 
   async function confirmarProposta() {
-    if (!proposta) return;
+    if (!empresaSobre) return;
     setCriando(true);
     setErro(null);
     try {
-      await apiPost(endpointConcluir, proposta);
+      await apiPost(endpointConcluir, { empresaSobre });
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
-      setErro(err instanceof ApiError ? err.message : "Erro ao criar a configuração");
+      setErro(err instanceof ApiError ? err.message : "Erro ao salvar a configuração");
       setCriando(false);
     }
   }
@@ -166,30 +163,14 @@ function OnboardingConteudo() {
             </div>
           )}
 
-          {proposta && (
+          {empresaSobre && (
             <div className="rounded-[14px] border border-accent/30 bg-accent-soft/50 p-4">
-              <p className="mb-3 text-sm font-semibold text-fg">Proposta de configuração</p>
-              <div className="space-y-2">
-                {proposta.etapas.map((etapa) => {
-                  const agente = proposta.agentes.find((a) => a.etapaNome === etapa.nome);
-                  return (
-                    <div key={etapa.nome} className="rounded-lg bg-surface p-3">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: etapa.cor }} />
-                        <p className="text-sm font-medium text-fg">{etapa.nome}</p>
-                      </div>
-                      <p className="mt-0.5 pl-4 text-xs text-fg-subtle">{etapa.descricaoObjetivo}</p>
-                      {agente && (
-                        <p className="mt-1.5 pl-4 text-xs text-fg-muted">
-                          <span className="font-medium text-accent">{agente.nome}:</span> {agente.objetivo}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
+              <p className="mb-3 text-sm font-semibold text-fg">Contexto que a IA vai usar</p>
+              <div className="rounded-lg bg-surface p-3">
+                <p className="whitespace-pre-wrap text-xs text-fg-muted">{empresaSobre}</p>
               </div>
               <Button className="mt-4 w-full" loading={criando} onClick={confirmarProposta}>
-                <CheckCircle2 className="h-3.5 w-3.5" /> Criar minha configuração
+                <CheckCircle2 className="h-3.5 w-3.5" /> Salvar e continuar
               </Button>
             </div>
           )}
@@ -207,7 +188,7 @@ function OnboardingConteudo() {
           <div ref={fimRef} />
         </div>
 
-        {!proposta && !concluidoPessoal && (
+        {!empresaSobre && !concluidoPessoal && (
           <div className="flex items-center gap-2 border-t border-border p-4">
             <input
               autoFocus

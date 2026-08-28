@@ -13,11 +13,27 @@ export async function GET() {
   const ctx = await requireEmpresaContext(session);
   if (isEmpresaContextResponse(ctx)) return ctx;
 
+  // Vendedor só vê os próprios números — gestor e admin veem de todos.
+  const restringirAoVendedor = session.papel === "vendedor";
+
   const [etapas, leads, historico, usuarios] = await Promise.all([
     prisma.etapaFunil.findMany({ where: { empresaId: ctx.empresaId, tipo: "funil" }, orderBy: { ordem: "asc" } }),
-    prisma.lead.findMany({ where: { empresaId: ctx.empresaId } }),
-    prisma.historicoEtapa.findMany({ where: { lead: { empresaId: ctx.empresaId } }, include: { etapa: true } }),
-    prisma.usuario.findMany({ where: { empresaId: ctx.empresaId, papel: "vendedor" } }),
+    prisma.lead.findMany({
+      where: { empresaId: ctx.empresaId, ...(restringirAoVendedor ? { vendedorId: session.id } : {}) },
+    }),
+    prisma.historicoEtapa.findMany({
+      where: {
+        lead: { empresaId: ctx.empresaId, ...(restringirAoVendedor ? { vendedorId: session.id } : {}) },
+      },
+      include: { etapa: true },
+    }),
+    prisma.usuario.findMany({
+      where: {
+        empresaId: ctx.empresaId,
+        papel: "vendedor",
+        ...(restringirAoVendedor ? { id: session.id } : {}),
+      },
+    }),
   ]);
 
   const totalLeads = leads.length || 1;

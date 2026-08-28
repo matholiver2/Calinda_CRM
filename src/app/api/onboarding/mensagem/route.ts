@@ -1,11 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  requireSession,
-  isSessionResponse,
-  requireEmpresaContext,
-  isEmpresaContextResponse,
-} from "@/lib/apiAuth";
-import { prisma } from "@/lib/db";
+import { requireSession, isSessionResponse, requireEmpresaContext, isEmpresaContextResponse } from "@/lib/apiAuth";
 import { gerarRespostaOnboarding, type TurnoOnboarding } from "@/lib/ai/onboardingEngine";
 
 export async function POST(req: Request) {
@@ -17,14 +11,6 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const historico = (Array.isArray(body?.historico) ? body.historico : []) as TurnoOnboarding[];
 
-  const etapas = await prisma.etapaFunil.findMany({
-    where: { empresaId: ctx.empresaId },
-    select: { nome: true },
-  });
-
-  const resultado = await gerarRespostaOnboarding(
-    historico,
-    etapas.map((e) => e.nome)
-  );
+  const resultado = await gerarRespostaOnboarding(historico);
   return NextResponse.json(resultado);
 }

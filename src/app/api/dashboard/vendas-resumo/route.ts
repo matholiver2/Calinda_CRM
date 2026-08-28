@@ -19,8 +19,15 @@ export async function GET() {
   const agora = new Date();
   const inicioJanela = new Date(agora.getFullYear(), agora.getMonth() - 5, 1);
 
+  // Vendedor só vê as próprias vendas — gestor e admin veem de todos.
+  const restringirAoVendedor = session.papel === "vendedor";
+
   const vendas = await prisma.venda.findMany({
-    where: { empresaId: ctx.empresaId, dataPagamento: { gte: inicioJanela } },
+    where: {
+      empresaId: ctx.empresaId,
+      dataPagamento: { gte: inicioJanela },
+      ...(restringirAoVendedor ? { vendedorId: session.id } : {}),
+    },
     include: { lead: { select: { nome: true } } },
     orderBy: { dataPagamento: "desc" },
   });

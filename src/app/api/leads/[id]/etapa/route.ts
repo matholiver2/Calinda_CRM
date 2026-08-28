@@ -49,10 +49,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     },
   });
 
+  // Mover manualmente pra uma etapa de remarketing/cliente precisa refletir
+  // no status do lead também — senão a página de Remarketing (que filtra por
+  // status, não por etapa) nunca mostra o lead que acabou de entrar lá.
+  const statusFinal =
+    novaEtapa.tipo === "remarketing" ? "remarketing" : novaEtapa.tipo === "cliente" ? "cliente" : "ativo";
+
   const leadAtualizado = await prisma.lead.update({
     where: { id },
     data: {
       etapaAtualId: novaEtapaId,
+      status: statusFinal,
       iaAtiva: novaEtapa.handoffHumano ? false : lead.iaAtiva,
       vendedorId:
         novaEtapa.handoffHumano && !lead.vendedorId && session.papel !== "super_admin"

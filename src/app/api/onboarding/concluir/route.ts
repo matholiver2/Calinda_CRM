@@ -8,7 +8,6 @@ import {
   isEmpresaContextResponse,
 } from "@/lib/apiAuth";
 import { marcarOnboarding } from "@/lib/onboarding";
-import type { EtapaProposta, AgenteProposto } from "@/lib/ai/onboardingEngine";
 
 export async function POST(req: Request) {
   const session = await requireSession();
@@ -19,49 +18,27 @@ export async function POST(req: Request) {
   if (isEmpresaContextResponse(ctx)) return ctx;
 
   const body = await req.json().catch(() => null);
-  const etapasPropostas = (body?.etapas ?? []) as EtapaProposta[];
-  const agentesPropostos = (body?.agentes ?? []) as AgenteProposto[];
+  const empresaSobre = typeof body?.empresaSobre === "string" ? body.empresaSobre.trim() : "";
 
-  if (etapasPropostas.length === 0) {
-    return NextResponse.json({ erro: "Nenhuma etapa na proposta" }, { status: 400 });
-  }
-
-  const etapasExistentes = await prisma.etapaFunil.findMany({ where: { empresaId: ctx.empresaId } });
-  const idPorNome = new Map(etapasExistentes.map((e) => [e.nome.trim().toLowerCase(), e.id]));
-
-  for (const etapa of etapasPropostas) {
-    const chave = etapa.nome.trim().toLowerCase();
-    if (idPorNome.has(chave)) continue;
-    const criada = await prisma.etapaFunil.create({
-      data: {
-        empresaId: ctx.empresaId,
-        nome: etapa.nome,
-        ordem: etapa.ordem,
-        cor: etapa.cor || "#6B7280",
-        tipo: "funil",
-        descricaoObjetivo: etapa.descricaoObjetivo || null,
-      },
+  if (empresaSobre) {
+    await prisma.configuracao.upsert({
+      where: { empresaId_chave: { empresaId: ctx.empresaId, chave: "empresa_sobre" } },
+      create: { empresaId: ctx.empresaId, chave: "empresa_sobre", valor: empresaSobre },
+      update: { valor: empresaSobre },
     });
-    idPorNome.set(chave, criada.id);
-  }
 
-  let criados = 0;
-  for (const agente of agentesPropostos) {
-    const etapaId = idPorNome.get(agente.etapaNome.trim().toLowerCase());
-    if (!etapaId) continue; // etapa referenciada não bateu com nenhuma criada/existente — ignora
-    await prisma.agenteIa.create({
-      data: {
-        empresaId: ctx.empresaId,
-        nome: agente.nome,
-        persona: agente.persona,
-        objetivo: agente.objetivo,
-        etapaId,
-      },
+    // Funil e agentes são sempre os padrões do sistema (criados na hora que
+    // a empresa nasce) — onboarding não recria nem renomeia nada, só injeta
+    // o contexto real da empresa na persona de cada agente padrão, pra IA
+    // falar no jeito da empresa em vez de um texto genérico.
+    const empresa = await prisma.empresa.findUnique({ where: { id: ctx.empresaId }, select: { nome: true } });
+    await prisma.agenteIa.updateMany({
+      where: { empresaId: ctx.empresaId },
+      data: { persona: `Você é o assistente virtual da ${empresa?.nome ?? "empresa"}. ${empresaSobre}` },
     });
-    criados++;
   }
 
   await marcarOnboarding(ctx.empresaId, "concluido");
 
-  return NextResponse.json({ ok: true, etapasCriadas: idPorNome.size, agentesCriados: criados });
+  return NextResponse.json({ ok: true });
 }

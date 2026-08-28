@@ -27,18 +27,80 @@ export async function POST(req: Request) {
 
   const empresa = await prisma.empresa.create({ data: { nome } });
 
-  // Etapa inicial padrão para a empresa não nascer completamente vazia.
-  await prisma.etapaFunil.create({
-    data: {
-      empresaId: empresa.id,
+  // Funil e agentes padrão do sistema — toda empresa nova já nasce com o
+  // fluxo básico funcionando (não depende do onboarding pra ter algo real).
+  // O onboarding, quando feito, só refina esses agentes pro negócio específico.
+  const PERSONA_PADRAO = "Você é o assistente virtual desta empresa, atencioso e direto ao ponto.";
+  const ETAPAS_PADRAO = [
+    {
       nome: "Novo Lead",
       ordem: 1,
       cor: "#F87171",
-      tipo: "funil",
+      tipo: "funil" as const,
       descricaoObjetivo: "Primeiro contato e abertura de conversa.",
+      agenteNome: "Agente de Recepção",
+      agenteObjetivo: "Dar boas-vindas ao lead e entender rapidamente o que ele está buscando.",
+    },
+    {
+      nome: "1ª Resposta",
+      ordem: 2,
+      cor: "#FBBF24",
+      tipo: "funil" as const,
+      descricaoObjetivo: "Entender a dor do lead e o contexto antes de avançar.",
+      agenteNome: "Agente de Qualificação",
+      agenteObjetivo: "Aprofundar o entendimento da necessidade do lead e qualificar se faz sentido seguir.",
+    },
+    {
+      nome: "Reunião Agendada",
+      ordem: 3,
+      cor: "#34D399",
+      tipo: "funil" as const,
+      descricaoObjetivo: "Confirmar interesse e propor reunião com um vendedor.",
+      agenteNome: "Agente de Fechamento",
+      agenteObjetivo: "Confirmar o interesse do lead e propor um horário de reunião com um vendedor.",
+    },
+    {
+      nome: "Remarketing",
+      ordem: 99,
+      cor: "#A78BFA",
+      tipo: "remarketing" as const,
+      descricaoObjetivo: "Reengajar leads que não fecharam.",
+      agenteNome: "Agente de Remarketing",
+      agenteObjetivo:
+        "Reengajar o lead que não fechou, com base no histórico da conversa, oferecendo algo novo ou perguntando se ainda tem interesse.",
+    },
+  ];
+
+  for (const etapaPadrao of ETAPAS_PADRAO) {
+    const etapa = await prisma.etapaFunil.create({
+      data: {
+        empresaId: empresa.id,
+        nome: etapaPadrao.nome,
+        ordem: etapaPadrao.ordem,
+        cor: etapaPadrao.cor,
+        tipo: etapaPadrao.tipo,
+        descricaoObjetivo: etapaPadrao.descricaoObjetivo,
+      },
+    });
+    await prisma.agenteIa.create({
+      data: {
+        empresaId: empresa.id,
+        etapaId: etapa.id,
+        nome: etapaPadrao.agenteNome,
+        persona: PERSONA_PADRAO,
+        objetivo: etapaPadrao.agenteObjetivo,
+      },
+    });
+  }
+
+  await prisma.configuracao.create({ data: { empresaId: empresa.id, chave: "leads_parados_dias", valor: "3" } });
+  await prisma.configuracao.create({
+    data: {
+      empresaId: empresa.id,
+      chave: "primeira_mensagem_template",
+      valor: `Olá, {nome}! Aqui é da {empresa}. Vi seu interesse e adorei poder te ajudar — me conta rapidinho: qual é o principal desafio que você quer resolver hoje?`,
     },
   });
-  await prisma.configuracao.create({ data: { empresaId: empresa.id, chave: "leads_parados_dias", valor: "3" } });
 
   return NextResponse.json({ empresa }, { status: 201 });
 }

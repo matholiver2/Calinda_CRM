@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GROUP_B } from "@/components/layout/navItems";
 
@@ -54,6 +54,7 @@ export function IconRail() {
       </div>
 
       <div className="mt-auto flex flex-col items-center gap-3">
+        <RailButton href="/configurar-ia" label="Configurar IA" icon={Sparkles} active={isActive("/configurar-ia")} />
         <RailButton href="/configuracoes" label="Configurações" icon={Settings} active={isActive("/configuracoes")} />
         <button
           onClick={sair}

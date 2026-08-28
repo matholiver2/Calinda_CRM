@@ -13,10 +13,13 @@ export async function GET() {
   const ctx = await requireEmpresaContext(session);
   if (isEmpresaContextResponse(ctx)) return ctx;
 
+  // Vendedor só vê os próprios leads/vendas — gestor e admin veem de todos.
+  const restringirAoVendedor = session.papel === "vendedor";
+
   const [etapas, leads, config] = await Promise.all([
     prisma.etapaFunil.findMany({ where: { empresaId: ctx.empresaId }, orderBy: { ordem: "asc" } }),
     prisma.lead.findMany({
-      where: { empresaId: ctx.empresaId },
+      where: { empresaId: ctx.empresaId, ...(restringirAoVendedor ? { vendedorId: session.id } : {}) },
       include: { etapaAtual: true, vendedor: { select: { nome: true } } },
     }),
     prisma.configuracao.findUnique({
@@ -64,6 +67,7 @@ export async function GET() {
       lead: { empresaId: ctx.empresaId },
       status: { in: ["agendada", "confirmada"] },
       dataHora: { gte: new Date() },
+      ...(restringirAoVendedor ? { vendedorId: session.id } : {}),
     },
     orderBy: { dataHora: "asc" },
     take: 6,

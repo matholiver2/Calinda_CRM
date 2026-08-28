@@ -114,7 +114,7 @@ export async function processarMensagemRecebida(leadId: string, textoRecebido: s
 async function responderComIa(leadId: string, mensagemGatilhoId: string) {
   const lead = await prisma.lead.findUniqueOrThrow({
     where: { id: leadId },
-    include: { etapaAtual: true },
+    include: { etapaAtual: true, empresa: true },
   });
   if (!lead.iaAtiva) return;
 
@@ -141,7 +141,7 @@ async function responderComIa(leadId: string, mensagemGatilhoId: string) {
     leadNome: lead.nome,
     etapaNome: lead.etapaAtual.nome,
     etapaOrdem: lead.etapaAtual.ordem,
-    persona: agente?.persona ?? "Você representa uma empresa de tecnologia B2B.",
+    persona: agente?.persona ?? `Você representa a ${lead.empresa.nome}.`,
     objetivo: agente?.objetivo ?? "Qualificar o lead e conduzi-lo até o agendamento de uma reunião.",
     historico,
     mensagemRecebida: maisRecente.conteudo,
@@ -286,28 +286,42 @@ async function responderComIa(leadId: string, mensagemGatilhoId: string) {
 export async function dispararPrimeiraMensagem(leadId: string) {
   const lead = await prisma.lead.findUniqueOrThrow({
     where: { id: leadId },
-    include: { etapaAtual: true },
+    include: { etapaAtual: true, empresa: true },
   });
 
-  const agente = await prisma.agenteIa.findFirst({
-    where: { etapaId: lead.etapaAtualId, ativo: true },
+  // A primeira mensagem é configurável (Configurar IA → Primeira mensagem)
+  // e sai exatamente como definida — não é a IA improvisando texto genérico.
+  // Só cai pra geração livre se a empresa nunca configurou um texto.
+  const configTemplate = await prisma.configuracao.findUnique({
+    where: { empresaId_chave: { empresaId: lead.empresaId, chave: "primeira_mensagem_template" } },
   });
 
-  const decisao = await gerarResposta({
-    leadNome: lead.nome,
-    etapaNome: lead.etapaAtual.nome,
-    etapaOrdem: lead.etapaAtual.ordem,
-    persona: agente?.persona ?? "Você representa uma empresa de tecnologia B2B.",
-    objetivo: agente?.objetivo ?? "Dar boas-vindas ao lead e entender o que ele precisa.",
-    historico: [],
-    mensagemRecebida: "(novo lead — envie a primeira mensagem de boas-vindas)",
-  });
+  let texto: string;
+  if (configTemplate?.valor) {
+    texto = configTemplate.valor
+      .replaceAll("{nome}", lead.nome.split(" ")[0])
+      .replaceAll("{empresa}", lead.empresa.nome);
+  } else {
+    const agente = await prisma.agenteIa.findFirst({
+      where: { etapaId: lead.etapaAtualId, ativo: true },
+    });
+    const decisao = await gerarResposta({
+      leadNome: lead.nome,
+      etapaNome: lead.etapaAtual.nome,
+      etapaOrdem: lead.etapaAtual.ordem,
+      persona: agente?.persona ?? `Você representa a ${lead.empresa.nome}.`,
+      objetivo: agente?.objetivo ?? "Dar boas-vindas ao lead e entender o que ele precisa.",
+      historico: [],
+      mensagemRecebida: "(novo lead — envie a primeira mensagem de boas-vindas)",
+    });
+    texto = decisao.resposta;
+  }
 
   const mensagem = await prisma.mensagem.create({
-    data: { leadId: lead.id, remetente: "ia", conteudo: decisao.resposta, statusEntrega: "enviado" },
+    data: { leadId: lead.id, remetente: "ia", conteudo: texto, statusEntrega: "enviado" },
   });
 
-  await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, decisao.resposta);
+  await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, texto);
 
   return mensagem;
 }

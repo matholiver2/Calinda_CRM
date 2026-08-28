@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Columns3, Bot, Plug, Users, UserCircle, FileText, CalendarClock, LifeBuoy } from "lucide-react";
+import { Columns3, Plug, Users, UserCircle, FileText, CalendarClock, LifeBuoy } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Select } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { fetcher } from "@/lib/fetcher";
 import useSWR from "swr";
 import { EtapasConfig } from "@/components/features/config/EtapasConfig";
-import { AgentesConfig } from "@/components/features/config/AgentesConfig";
 import { PlanosConfig } from "@/components/features/config/PlanosConfig";
 import { IntegracoesConfig } from "@/components/features/config/IntegracoesConfig";
 import { UsuariosConfig } from "@/components/features/config/UsuariosConfig";
@@ -20,7 +19,6 @@ import { SuporteConfig } from "@/components/features/config/SuporteConfig";
 const TABS = [
   { id: "conta", label: "Minha conta", icon: UserCircle },
   { id: "etapas", label: "Etapas do funil", icon: Columns3 },
-  { id: "agentes", label: "Agentes de IA", icon: Bot },
   { id: "planos", label: "Planos", icon: FileText },
   { id: "integracoes", label: "Integrações", icon: Plug },
   { id: "usuarios", label: "Usuários", icon: Users },
@@ -40,7 +38,7 @@ export default function ConfiguracoesPage() {
 
   return (
     <div>
-      <PageHeader title="Configurações" description="Conta, etapas do funil, agentes de IA, integrações e usuários" />
+      <PageHeader title="Configurações" description="Conta, etapas do funil, integrações e usuários" />
 
       {/* Mobile: dropdown — a fileira de abas fica apertada demais numa tela pequena */}
       <div className="mb-5 sm:hidden">
@@ -74,7 +72,6 @@ export default function ConfiguracoesPage() {
 
       {tab === "conta" && <MinhaContaConfig />}
       {tab === "etapas" && <EtapasConfig podeEditar={podeEditar} />}
-      {tab === "agentes" && <AgentesConfig podeEditar={podeEditar} />}
       {tab === "planos" && <PlanosConfig podeEditar={podeEditar} />}
       {tab === "integracoes" && <IntegracoesConfig podeEditar={podeEditar} />}
       {tab === "usuarios" && <UsuariosConfig podeEditar={podeEditar} />}
