@@ -19,7 +19,7 @@ export function StatCard({
       <div className="flex items-start justify-between">
         <div>
           <p className="text-xs font-medium text-fg-muted">{label}</p>
-          <p className="mt-1.5 text-2xl font-bold tracking-tight text-fg">{value}</p>
+          <p className="mt-1.5 text-2xl font-bold tracking-[-0.01em] text-fg">{value}</p>
           {hint && <p className="mt-1 text-xs text-fg-subtle">{hint}</p>}
         </div>
         <div

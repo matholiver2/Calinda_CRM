@@ -1,18 +1,17 @@
 import type { Metadata, Viewport } from "next";
-import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Sora, IBM_Plex_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import { THEME_COOKIE } from "@/lib/theme";
 import { RegistrarServiceWorker } from "@/components/RegistrarServiceWorker";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const plexSans = IBM_Plex_Sans({
-  variable: "--font-sans",
+// Sora é a fonte oficial da identidade CALINDA — usada tanto pro corpo do
+// texto quanto pra títulos/destaques (--font-sans e --font-display apontam
+// pra ela), pra o produto inteiro soar como uma peça só. Pesos cobrem toda
+// a hierarquia: 400 corpo, 500 labels/navegação, 600 títulos/botões, 700
+// números/KPIs.
+const sora = Sora({
+  variable: "--font-sora",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -51,7 +50,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${spaceGrotesk.variable} ${plexSans.variable} ${plexMono.variable} ${themeClass} h-full antialiased`.trim()}
+      className={`${sora.variable} ${plexMono.variable} ${themeClass} h-full antialiased`.trim()}
     >
       <body className="min-h-full flex flex-col bg-bg text-fg font-sans">
         <RegistrarServiceWorker />

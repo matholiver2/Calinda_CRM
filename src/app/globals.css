@@ -88,8 +88,10 @@
   --color-danger: var(--color-danger);
   --color-nav-active: var(--color-nav-active);
   --color-nav-active-foreground: var(--color-nav-active-foreground);
-  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Sora é a fonte única da identidade CALINDA — --font-sans e --font-display
+     apontam pra ela (ver src/app/layout.tsx); não são famílias diferentes. */
+  --font-sans: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono), ui-monospace, 'SF Mono', monospace;
 }
 

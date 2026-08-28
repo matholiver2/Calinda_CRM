@@ -52,7 +52,7 @@ export default function AceitarConvitePage({ params }: { params: Promise<{ token
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <Logo size="lg" className="mb-3 shadow-lg shadow-accent/25" />
-          <h1 className="font-display text-2xl font-bold tracking-tight text-fg">CALINDA</h1>
+          <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] text-fg">CALINDA</h1>
           <p className="mt-1 text-sm text-fg-muted">Você foi convidado</p>
         </div>
 

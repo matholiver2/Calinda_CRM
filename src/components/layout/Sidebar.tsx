@@ -43,7 +43,7 @@ export function Sidebar({ usuario, empresaNome }: { usuario: SessionPayload; emp
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
           <Logo size="sm" />
-          <span className="font-display text-lg font-bold tracking-tight text-fg">CALINDA</span>
+          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">CALINDA</span>
         </div>
         {empresaNome && (
           <div className="mt-2 flex items-center gap-1.5 truncate text-xs text-fg-subtle">

@@ -19,7 +19,7 @@ export function TopNavbar({ usuario }: { usuario: SessionPayload }) {
       <div className="flex items-center gap-2 md:gap-2.5">
         <MobileNavDrawer />
         <Logo size="sm" />
-        <span className="hidden font-display text-lg font-bold tracking-tight text-fg sm:inline">CALINDA</span>
+        <span className="hidden font-display text-lg font-semibold tracking-[-0.02em] text-fg sm:inline">CALINDA</span>
       </div>
 
       <nav className="hidden h-9 items-center gap-1 rounded-full bg-bg px-1.5 md:flex">
