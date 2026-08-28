@@ -21,15 +21,30 @@ type Empresa = {
 };
 
 export default function EmpresasPage() {
-  const { data } = useSWR<{ empresas: Empresa[] }>("/api/empresas", fetcher);
+  const { data, error: erroListagem } = useSWR<{ empresas: Empresa[] }>("/api/empresas", fetcher);
   const [criando, setCriando] = useState(false);
+  const [entrandoId, setEntrandoId] = useState<string | null>(null);
+  const [erroEntrar, setErroEntrar] = useState<string | null>(null);
   const router = useRouter();
 
   const empresas = data?.empresas ?? [];
 
   async function entrar(id: string) {
-    await apiPost(`/api/empresas/${id}/entrar`);
-    router.push("/dashboard");
+    setErroEntrar(null);
+    setEntrandoId(id);
+    try {
+      await apiPost(`/api/empresas/${id}/entrar`);
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setErroEntrar(
+        err instanceof ApiError
+          ? err.message
+          : "Não foi possível entrar na empresa. Confira se o banco de dados está acessível."
+      );
+    } finally {
+      setEntrandoId(null);
+    }
   }
 
   return (
@@ -44,6 +59,13 @@ export default function EmpresasPage() {
         }
       />
 
+      {erroListagem && (
+        <p className="mb-4 text-sm text-danger">
+          Não foi possível carregar as empresas. Confira se o banco de dados está acessível.
+        </p>
+      )}
+      {erroEntrar && <p className="mb-4 text-sm text-danger">{erroEntrar}</p>}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {empresas.map((e) => (
           <Card key={e.id} className="p-5">
@@ -57,7 +79,13 @@ export default function EmpresasPage() {
             <p className="mt-1 flex items-center gap-1.5 text-xs text-fg-subtle">
               <Users className="h-3 w-3" /> {e._count.usuarios} usuários · {e._count.leads} leads
             </p>
-            <Button variant="secondary" size="sm" className="mt-4 w-full" onClick={() => entrar(e.id)}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-4 w-full"
+              loading={entrandoId === e.id}
+              onClick={() => entrar(e.id)}
+            >
               Entrar <ArrowRight className="h-3.5 w-3.5" />
             </Button>
           </Card>
