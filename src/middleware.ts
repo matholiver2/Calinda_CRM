@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_COOKIE } from "@/lib/authCookie";
 
-const PUBLIC_PATHS = ["/login", "/convite"];
+const PUBLIC_PATHS = ["/login", "/convite", "/privacidade", "/termos"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
