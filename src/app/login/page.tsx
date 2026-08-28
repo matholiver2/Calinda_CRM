@@ -7,13 +7,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
 import { fetcher } from "@/lib/fetcher";
-import { AlertCircle } from "lucide-react";
-
-const CONTAS_DEMO = [
-  { label: "Super Admin", email: "admin@calinda.com", senha: "calinda@12" },
-  { label: "Admin (CALINDA)", email: "admin@calinda-demo.com", senha: "calinda123" },
-  { label: "Vendedor (CALINDA)", email: "camila@calinda-demo.com", senha: "calinda123" },
-];
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
 const ERROS_GOOGLE: Record<string, string> = {
   nao_convidado: "Esse e-mail ainda não foi convidado. Peça a um admin para te convidar.",
@@ -33,6 +27,7 @@ function LoginForm() {
     return erroParam ? (ERROS_GOOGLE[erroParam] ?? "Não foi possível entrar.") : null;
   });
   const [loading, setLoading] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
 
   const { data: googleStatus } = useSWR<{ configurado: boolean }>("/api/auth/google-status", fetcher);
 
@@ -100,13 +95,25 @@ function LoginForm() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium text-fg-muted">Senha</label>
-                <Input
-                  type="password"
-                  required
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder="••••••••"
-                />
+                <div className="relative">
+                  <Input
+                    type={mostrarSenha ? "text" : "password"}
+                    required
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                    placeholder="••••••••"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setMostrarSenha((v) => !v)}
+                    tabIndex={-1}
+                    title={mostrarSenha ? "Esconder senha" : "Mostrar senha"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-fg-subtle hover:text-fg"
+                  >
+                    {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -126,25 +133,6 @@ function LoginForm() {
         <p className="mt-4 text-center text-xs text-fg-subtle">
           O acesso ao CALINDA é somente por convite. Recebeu um link de convite? Abra-o para criar sua conta.
         </p>
-
-        <div className="mt-5 rounded-2xl border border-border bg-bg-elevated p-4">
-          <p className="mb-2 text-xs font-medium text-fg-muted">Contas de demonstração</p>
-          <div className="flex flex-wrap gap-2">
-            {CONTAS_DEMO.map((c) => (
-              <button
-                key={c.email}
-                type="button"
-                onClick={() => {
-                  setEmail(c.email);
-                  setSenha(c.senha);
-                }}
-                className="rounded-full border border-border-strong bg-surface px-3 py-1 text-xs text-fg-muted transition-colors hover:border-accent hover:text-accent"
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );
