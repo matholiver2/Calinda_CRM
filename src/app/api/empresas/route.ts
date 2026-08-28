@@ -69,6 +69,18 @@ export async function POST(req: Request) {
       agenteObjetivo:
         "Reengajar o lead que não fechou, com base no histórico da conversa, oferecendo algo novo ou perguntando se ainda tem interesse.",
     },
+    {
+      nome: "Finalizado",
+      ordem: 100,
+      cor: "#94A3B8",
+      tipo: "finalizado" as const,
+      descricaoObjetivo: "Fim natural da conversa — a IA já fez o que podia fazer.",
+      // Sem agente: aqui não tem conversa livre, só a mensagem de
+      // finalização configurada (Configurar IA), disparada automaticamente
+      // ao entrar nessa etapa — ver dispararMensagemFinalizacao.
+      agenteNome: null,
+      agenteObjetivo: null,
+    },
   ];
 
   for (const etapaPadrao of ETAPAS_PADRAO) {
@@ -82,15 +94,17 @@ export async function POST(req: Request) {
         descricaoObjetivo: etapaPadrao.descricaoObjetivo,
       },
     });
-    await prisma.agenteIa.create({
-      data: {
-        empresaId: empresa.id,
-        etapaId: etapa.id,
-        nome: etapaPadrao.agenteNome,
-        persona: PERSONA_PADRAO,
-        objetivo: etapaPadrao.agenteObjetivo,
-      },
-    });
+    if (etapaPadrao.agenteNome && etapaPadrao.agenteObjetivo) {
+      await prisma.agenteIa.create({
+        data: {
+          empresaId: empresa.id,
+          etapaId: etapa.id,
+          nome: etapaPadrao.agenteNome,
+          persona: PERSONA_PADRAO,
+          objetivo: etapaPadrao.agenteObjetivo,
+        },
+      });
+    }
   }
 
   await prisma.configuracao.create({ data: { empresaId: empresa.id, chave: "leads_parados_dias", valor: "3" } });

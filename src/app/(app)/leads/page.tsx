@@ -97,6 +97,7 @@ export default function LeadsPage() {
             <option value="cliente">Cliente</option>
             <option value="perdido">Perdido</option>
             <option value="remarketing">Remarketing</option>
+            <option value="finalizado">Finalizado</option>
           </Select>
         </div>
         <div className="w-[160px] shrink-0">

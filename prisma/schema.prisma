@@ -24,6 +24,7 @@ enum TipoEtapa {
   funil
   remarketing
   cliente
+  finalizado
 }
 
 enum StatusLead {
@@ -31,6 +32,7 @@ enum StatusLead {
   cliente
   perdido
   remarketing
+  finalizado
 }
 
 enum RemetenteMensagem {

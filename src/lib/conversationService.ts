@@ -232,10 +232,14 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
             orderBy: { ordem: "desc" },
           })
         : lead.etapaAtual.tipo === "funil"
-          ? await prisma.etapaFunil.findFirst({
+          ? ((await prisma.etapaFunil.findFirst({
               where: { empresaId: lead.empresaId, tipo: "funil", ordem: { gt: lead.etapaAtual.ordem } },
               orderBy: { ordem: "asc" },
-            })
+            })) ??
+            // Não há mais etapa de funil à frente e a IA decidiu avançar mesmo
+            // assim — é o fim natural da conversa, manda pra "Finalizado" (se
+            // a empresa tiver essa etapa) em vez de ficar parada sem transição.
+            (await prisma.etapaFunil.findFirst({ where: { empresaId: lead.empresaId, tipo: "finalizado" } })))
           : await prisma.etapaFunil.findFirst({
               where: { empresaId: lead.empresaId, tipo: "funil" },
               orderBy: { ordem: "asc" },
@@ -255,7 +259,14 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
       // marcado assim pra sempre mesmo já estando de volta no funil normal,
       // sumindo da lista de leads ativos e continuando preso no filtro da
       // tela de Remarketing.
-      statusFinal = proximaEtapa.tipo === "remarketing" ? "remarketing" : proximaEtapa.tipo === "cliente" ? "cliente" : "ativo";
+      statusFinal =
+        proximaEtapa.tipo === "remarketing"
+          ? "remarketing"
+          : proximaEtapa.tipo === "cliente"
+            ? "cliente"
+            : proximaEtapa.tipo === "finalizado"
+              ? "finalizado"
+              : "ativo";
       void criarNotificacao(lead.empresaId, {
         tipo: "conversa_mudou_etapa",
         titulo: `${lead.nome} avançou para ${proximaEtapa.nome}`,
@@ -356,6 +367,8 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
     }
   }
 
+  const entrouNaFinalizacao = etapaFinal.tipo === "finalizado" && etapaFinal.id !== lead.etapaAtualId;
+
   const leadAtualizado = await prisma.lead.update({
     where: { id: lead.id },
     data: {
@@ -366,6 +379,10 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
     },
     include: { etapaAtual: true },
   });
+
+  if (entrouNaFinalizacao) {
+    await dispararMensagemFinalizacao(lead.id);
+  }
 
   return { respondeuIa: true, mensagem: iaMensagem, lead: leadAtualizado, reuniao: reuniaoCriada };
 }
@@ -413,6 +430,40 @@ export async function dispararPrimeiraMensagem(leadId: string) {
   });
 
   await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, texto);
+
+  return mensagem;
+}
+
+/**
+ * Dispara a mensagem de finalização quando um lead entra numa etapa
+ * tipo "finalizado" (configurável em Configurar IA → Mensagem de
+ * finalização) — mesmo padrão de dispararPrimeiraMensagem, mas no fim da
+ * conversa em vez do início. Pausa a IA depois de enviar: a conversa está
+ * encerrada, não há mais nada pra IA decidir daqui pra frente.
+ */
+export async function dispararMensagemFinalizacao(leadId: string) {
+  const lead = await prisma.lead.findUniqueOrThrow({
+    where: { id: leadId },
+    include: { empresa: true },
+  });
+
+  const configTemplate = await prisma.configuracao.findUnique({
+    where: { empresaId_chave: { empresaId: lead.empresaId, chave: "mensagem_finalizacao_template" } },
+  });
+
+  const texto = (
+    configTemplate?.valor ||
+    "Foi um prazer falar com você, {nome}! Se precisar de mais alguma coisa, é só chamar por aqui. 😊"
+  )
+    .replaceAll("{nome}", lead.nome.split(" ")[0])
+    .replaceAll("{empresa}", lead.empresa.nome);
+
+  const mensagem = await prisma.mensagem.create({
+    data: { leadId: lead.id, remetente: "ia", conteudo: texto, statusEntrega: "enviado" },
+  });
+
+  await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, texto);
+  await prisma.lead.update({ where: { id: lead.id }, data: { iaAtiva: false } });
 
   return mensagem;
 }

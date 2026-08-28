@@ -3,7 +3,7 @@ export type Etapa = {
   nome: string;
   ordem: number;
   cor: string;
-  tipo: "funil" | "remarketing" | "cliente";
+  tipo: "funil" | "remarketing" | "cliente" | "finalizado";
   promptIa: string | null;
   descricaoObjetivo: string | null;
   handoffHumano: boolean;
@@ -27,7 +27,7 @@ export type Lead = {
   etapaAtual: Etapa;
   vendedorId: string | null;
   vendedor: VendedorResumo | null;
-  status: "ativo" | "cliente" | "perdido" | "remarketing";
+  status: "ativo" | "cliente" | "perdido" | "remarketing" | "finalizado";
   iaAtiva: boolean;
   entrouEm: string;
   atualizadoEm: string;

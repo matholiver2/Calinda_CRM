@@ -158,6 +158,7 @@ function EtapaFormDialog({
               <option value="funil">Funil</option>
               <option value="remarketing">Remarketing</option>
               <option value="cliente">Cliente</option>
+              <option value="finalizado">Finalizado</option>
             </Select>
           </div>
         </div>

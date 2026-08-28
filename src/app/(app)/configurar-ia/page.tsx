@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles } from "lucide-react";
+import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles, FlagOff } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -69,6 +69,18 @@ export default function ConfigurarIaPage() {
           chave="remarketing_mensagem_template"
           valorInicial={data?.configuracoes.remarketing_mensagem_template ?? ""}
           placeholder="Oi, {nome}! Passando pra saber se ainda tem interesse em falar com a gente na {empresa}..."
+          podeEditar={podeEditar}
+          onSalvo={() => mutate()}
+        />
+
+        <TextoLongoCard
+          key={`finalizacao-${data ? "carregado" : "carregando"}`}
+          icone={FlagOff}
+          titulo="Mensagem de finalização"
+          descricao='Enviada automaticamente quando a conversa entra na etapa "Finalizado" do funil — use {nome} e {empresa}.'
+          chave="mensagem_finalizacao_template"
+          valorInicial={data?.configuracoes.mensagem_finalizacao_template ?? ""}
+          placeholder="Foi um prazer falar com você, {nome}! Se precisar de mais alguma coisa, é só chamar por aqui."
           podeEditar={podeEditar}
           onSalvo={() => mutate()}
         />

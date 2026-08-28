@@ -7,6 +7,7 @@ import {
   isEmpresaContextResponse,
 } from "@/lib/apiAuth";
 import { leadPertenceAEmpresa } from "@/lib/tenant";
+import { dispararMensagemFinalizacao } from "@/lib/conversationService";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
@@ -49,11 +50,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     },
   });
 
-  // Mover manualmente pra uma etapa de remarketing/cliente precisa refletir
-  // no status do lead também — senão a página de Remarketing (que filtra por
-  // status, não por etapa) nunca mostra o lead que acabou de entrar lá.
+  // Mover manualmente pra uma etapa de remarketing/cliente/finalizado precisa
+  // refletir no status do lead também — senão a página de Remarketing (que
+  // filtra por status, não por etapa) nunca mostra o lead que acabou de
+  // entrar lá.
   const statusFinal =
-    novaEtapa.tipo === "remarketing" ? "remarketing" : novaEtapa.tipo === "cliente" ? "cliente" : "ativo";
+    novaEtapa.tipo === "remarketing"
+      ? "remarketing"
+      : novaEtapa.tipo === "cliente"
+        ? "cliente"
+        : novaEtapa.tipo === "finalizado"
+          ? "finalizado"
+          : "ativo";
 
   const leadAtualizado = await prisma.lead.update({
     where: { id },
@@ -68,6 +76,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     },
     include: { etapaAtual: true, vendedor: true },
   });
+
+  // Arrastar manualmente pra "Finalizado" no board também dispara a mesma
+  // mensagem de encerramento que a IA dispararia sozinha.
+  if (novaEtapa.tipo === "finalizado") {
+    await dispararMensagemFinalizacao(id);
+  }
 
   return NextResponse.json({ lead: leadAtualizado });
 }
