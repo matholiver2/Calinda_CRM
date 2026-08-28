@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
+import { DictationButton } from "@/components/ui/DictationButton";
 import { apiPost, ApiError } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 
@@ -103,6 +104,7 @@ export default function AssistentePage() {
             disabled={enviando}
             className="w-full rounded-[10px] border border-border bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-accent disabled:opacity-50"
           />
+          <DictationButton valorAtual={mensagem} onTexto={setMensagem} />
           <Button onClick={() => enviar()} loading={enviando} disabled={!mensagem.trim()}>
             <Send className="h-3.5 w-3.5" />
           </Button>

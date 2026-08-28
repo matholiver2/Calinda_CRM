@@ -6,6 +6,7 @@ import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles } 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
+import { DictationButton } from "@/components/ui/DictationButton";
 import { fetcher, apiPatch, ApiError } from "@/lib/fetcher";
 import { CARD } from "@/lib/utils";
 import { AgentesConfig } from "@/components/features/config/AgentesConfig";
@@ -118,14 +119,17 @@ function TextoLongoCard({
 
   return (
     <div className={CARD}>
-      <div className="mb-4 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
-          <Icone className="h-4 w-4" />
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+            <Icone className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-fg">{titulo}</h2>
+            <p className="text-xs text-fg-subtle">{descricao}</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-sm font-semibold text-fg">{titulo}</h2>
-          <p className="text-xs text-fg-subtle">{descricao}</p>
-        </div>
+        {podeEditar && <DictationButton valorAtual={valor} onTexto={setValor} />}
       </div>
       <form onSubmit={salvar} className="space-y-3">
         <Textarea rows={5} value={valor} onChange={(e) => setValor(e.target.value)} placeholder={placeholder} disabled={!podeEditar} />
