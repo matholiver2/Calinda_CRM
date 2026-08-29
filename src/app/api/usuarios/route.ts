@@ -15,10 +15,21 @@ export async function GET() {
   const ctx = await requireEmpresaContext(session);
   if (isEmpresaContextResponse(ctx)) return ctx;
 
-  const usuarios = await prisma.usuario.findMany({
+  const membros = await prisma.membroEmpresa.findMany({
     where: { empresaId: ctx.empresaId },
-    select: { id: true, nome: true, email: true, papel: true, ativo: true, avatarCor: true, criadoEm: true },
+    include: { usuario: { select: { id: true, nome: true, email: true, avatarCor: true } } },
     orderBy: { criadoEm: "asc" },
   });
+
+  const usuarios = membros.map((m) => ({
+    id: m.id,
+    nome: m.usuario.nome,
+    email: m.usuario.email,
+    papel: m.papel,
+    ativo: m.ativo,
+    avatarCor: m.usuario.avatarCor,
+    criadoEm: m.criadoEm,
+  }));
+
   return NextResponse.json({ usuarios });
 }

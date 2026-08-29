@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE, verifyToken } from "@/lib/auth";
+import { resolverSessao } from "@/lib/session";
 import { CONTAS_COOKIE, CONTAS_COOKIE_MAX_AGE, parseTokens } from "@/lib/multiConta";
 
 /**
@@ -13,25 +14,37 @@ import { CONTAS_COOKIE, CONTAS_COOKIE_MAX_AGE, parseTokens } from "@/lib/multiCo
 export async function GET() {
   const store = await cookies();
   const tokenAtivo = store.get(AUTH_COOKIE)?.value;
-  const sessionAtiva = tokenAtivo ? verifyToken(tokenAtivo) : null;
-  if (!tokenAtivo || !sessionAtiva) {
+  const identidadeAtiva = tokenAtivo ? verifyToken(tokenAtivo) : null;
+  if (!tokenAtivo || !identidadeAtiva) {
     return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
   }
 
   const tokensSalvos = parseTokens(store.get(CONTAS_COOKIE)?.value);
 
-  const porId = new Map<string, { token: string; session: NonNullable<ReturnType<typeof verifyToken>> }>();
+  const porId = new Map<string, { token: string; identidade: NonNullable<ReturnType<typeof verifyToken>> }>();
   for (const t of [tokenAtivo, ...tokensSalvos]) {
-    const s = verifyToken(t);
-    if (s && !porId.has(s.id)) porId.set(s.id, { token: t, session: s });
+    const identidade = verifyToken(t);
+    if (identidade && !porId.has(identidade.id)) porId.set(identidade.id, { token: t, identidade });
   }
 
-  const contas = [...porId.values()];
+  const contas = await Promise.all(
+    [...porId.values()].map(async ({ token, identidade }) => {
+      const sessao = await resolverSessao(identidade);
+      return { token, identidade, papel: sessao?.papel ?? null };
+    })
+  );
+  const contasValidas = contas.filter((c) => c.papel !== null);
+
   const res = NextResponse.json({
-    contas: contas.map((c) => ({ id: c.session.id, nome: c.session.nome, email: c.session.email, papel: c.session.papel })),
-    ativaId: sessionAtiva.id,
+    contas: contasValidas.map((c) => ({
+      id: c.identidade.id,
+      nome: c.identidade.nome,
+      email: c.identidade.email,
+      papel: c.papel,
+    })),
+    ativaId: identidadeAtiva.id,
   });
-  res.cookies.set(CONTAS_COOKIE, JSON.stringify(contas.map((c) => c.token)), {
+  res.cookies.set(CONTAS_COOKIE, JSON.stringify(contasValidas.map((c) => c.token)), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

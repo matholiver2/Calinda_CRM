@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { comparePassword, signToken, verifyToken, AUTH_COOKIE } from "@/lib/auth";
+import { resolverSessao } from "@/lib/session";
 import { CONTAS_COOKIE, CONTAS_COOKIE_MAX_AGE, parseTokens } from "@/lib/multiConta";
 
 /**
  * Autentica uma segunda conta e adiciona à lista de contas conectadas neste
  * navegador SEM trocar a sessão ativa — o usuário troca depois clicando na
- * conta desejada (ver POST /api/auth/contas/trocar).
+ * conta desejada (ver POST /api/auth/contas/trocar). Diferente de
+ * "Trocar de empresa" (mesma conta, várias empresas via MembroEmpresa) —
+ * aqui são contas de fato distintas (e-mails diferentes).
  */
 export async function POST(req: Request) {
   const store = await cookies();
@@ -38,13 +41,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Credenciais inválidas" }, { status: 401 });
   }
 
-  const novoToken = signToken({
-    id: usuario.id,
-    nome: usuario.nome,
-    email: usuario.email,
-    papel: usuario.papel,
-    empresaId: usuario.empresaId,
-  });
+  const novoToken = signToken({ id: usuario.id, nome: usuario.nome, email: usuario.email });
+  const sessao = await resolverSessao({ id: usuario.id, nome: usuario.nome, email: usuario.email });
+  if (!sessao) {
+    return NextResponse.json({ erro: "Esta conta não tem acesso a nenhuma empresa" }, { status: 401 });
+  }
 
   const tokensExistentes = parseTokens(store.get(CONTAS_COOKIE)?.value);
   const tokens = [tokenAtivo, ...tokensExistentes].filter((t) => verifyToken(t)?.id !== usuario.id);
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   const res = NextResponse.json({
     ok: true,
-    conta: { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: usuario.papel },
+    conta: { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: sessao.papel },
   });
   res.cookies.set(CONTAS_COOKIE, JSON.stringify(tokens), {
     httpOnly: true,

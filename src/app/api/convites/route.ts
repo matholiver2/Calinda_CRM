@@ -34,9 +34,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "E-mail e papel (admin/gestor/vendedor) são obrigatórios" }, { status: 400 });
   }
 
+  // E-mail já pode ter conta em OUTRA empresa — nesse caso o convite serve
+  // pra vincular essa conta existente aqui também (ver aceitar/route.ts),
+  // então só bloqueia se a pessoa já for membro DESTA empresa.
   const usuarioExistente = await prisma.usuario.findUnique({ where: { email } });
   if (usuarioExistente) {
-    return NextResponse.json({ erro: "Já existe um usuário com esse e-mail" }, { status: 409 });
+    const jaMembro = await prisma.membroEmpresa.findUnique({
+      where: { usuarioId_empresaId: { usuarioId: usuarioExistente.id, empresaId: ctx.empresaId } },
+    });
+    if (jaMembro) {
+      return NextResponse.json({ erro: "Essa pessoa já faz parte desta empresa" }, { status: 409 });
+    }
   }
 
   const conviteExistente = await prisma.convite.findFirst({

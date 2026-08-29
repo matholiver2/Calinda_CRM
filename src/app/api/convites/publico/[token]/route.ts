@@ -12,10 +12,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
 
   const expirado = convite.status === "pendente" && convite.expiraEm < new Date();
 
+  // Se já existe conta com esse e-mail (de outra empresa), o front pede só
+  // a senha atual pra confirmar dono da conta, em vez de nome+senha nova —
+  // a empresa nova é vinculada à conta existente (ver aceitar/route.ts).
+  const contaExistente = Boolean(await prisma.usuario.findUnique({ where: { email: convite.email }, select: { id: true } }));
+
   return NextResponse.json({
     email: convite.email,
     papel: convite.papel,
     empresaNome: convite.empresa?.nome ?? null,
     status: expirado ? "expirado" : convite.status,
+    contaExistente,
   });
 }

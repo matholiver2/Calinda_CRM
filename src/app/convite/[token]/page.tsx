@@ -15,6 +15,7 @@ type ConviteInfo = {
   papel: string;
   empresaNome: string | null;
   status: "pendente" | "aceito" | "expirado" | "revogado";
+  contaExistente: boolean;
 };
 
 export default function AceitarConvitePage({ params }: { params: Promise<{ token: string }> }) {
@@ -28,16 +29,18 @@ export default function AceitarConvitePage({ params }: { params: Promise<{ token
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const contaExistente = data?.contaExistente ?? false;
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
-    if (senha !== confirmar) {
+    if (!contaExistente && senha !== confirmar) {
       setErro("As senhas não coincidem");
       return;
     }
     setLoading(true);
     try {
-      await apiPost(`/api/convites/publico/${token}/aceitar`, { nome, senha });
+      await apiPost(`/api/convites/publico/${token}/aceitar`, contaExistente ? { senha } : { nome, senha });
       router.push("/dashboard");
       router.refresh();
     } catch (err) {
@@ -86,31 +89,53 @@ export default function AceitarConvitePage({ params }: { params: Promise<{ token
                 como {papelLabel(data.papel)}.
               </div>
 
+              {contaExistente && (
+                <p className="mb-4 text-sm text-fg-muted">
+                  Já existe uma conta com esse e-mail — confirme sua senha atual pra adicionar esta empresa a ela.
+                  Você continua acessando as suas outras empresas normalmente, e troca entre elas pelo menu da conta.
+                </p>
+              )}
+
               <form onSubmit={onSubmit} className="space-y-4">
+                {!contaExistente && (
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-fg-muted">Seu nome</label>
+                    <Input required autoFocus value={nome} onChange={(e) => setNome(e.target.value)} />
+                  </div>
+                )}
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-fg-muted">Seu nome</label>
-                  <Input required autoFocus value={nome} onChange={(e) => setNome(e.target.value)} />
+                  <label className="mb-1.5 block text-xs font-medium text-fg-muted">
+                    {contaExistente ? "Sua senha" : "Senha"}
+                  </label>
+                  <Input
+                    type="password"
+                    required
+                    autoFocus={contaExistente}
+                    minLength={contaExistente ? undefined : 6}
+                    value={senha}
+                    onChange={(e) => setSenha(e.target.value)}
+                  />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-fg-muted">Senha</label>
-                  <Input type="password" required minLength={6} value={senha} onChange={(e) => setSenha(e.target.value)} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-xs font-medium text-fg-muted">Confirmar senha</label>
-                  <Input type="password" required minLength={6} value={confirmar} onChange={(e) => setConfirmar(e.target.value)} />
-                </div>
+                {!contaExistente && (
+                  <div>
+                    <label className="mb-1.5 block text-xs font-medium text-fg-muted">Confirmar senha</label>
+                    <Input type="password" required minLength={6} value={confirmar} onChange={(e) => setConfirmar(e.target.value)} />
+                  </div>
+                )}
                 {erro && (
                   <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
                     <AlertCircle className="h-4 w-4 shrink-0" /> {erro}
                   </div>
                 )}
                 <Button type="submit" loading={loading} className="w-full">
-                  Criar conta e entrar
+                  {contaExistente ? "Adicionar empresa e entrar" : "Criar conta e entrar"}
                 </Button>
-                <p className="text-center text-xs text-fg-subtle">
-                  Prefere usar o Google? Volte para a tela de login e entre com o Google usando o e-mail{" "}
-                  {data.email} — sua conta é criada automaticamente.
-                </p>
+                {!contaExistente && (
+                  <p className="text-center text-xs text-fg-subtle">
+                    Prefere usar o Google? Volte para a tela de login e entre com o Google usando o e-mail{" "}
+                    {data.email} — sua conta é criada automaticamente.
+                  </p>
+                )}
               </form>
             </>
           )}

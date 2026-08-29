@@ -1,22 +1,18 @@
-import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import type { SessionPayload } from "@/lib/auth";
 
 export const EMPRESA_ATIVA_COOKIE = "assiz_empresa_ativa";
 
 /**
- * Resolve qual empresa deve ser usada para escopar os dados desta requisição.
- *
- * - Usuários normais (admin/gestor/vendedor) estão sempre presos à própria
- *   empresa (session.empresaId).
- * - super_admin não pertence a nenhuma empresa: só enxerga dados de uma
- *   empresa operacional quando "entra" nela via o seletor de empresas,
- *   o que grava o id escolhido no cookie `assiz_empresa_ativa`.
+ * Empresa em contexto pra esta requisição. Já vem resolvida dentro de
+ * session.empresaId (ver src/lib/session.ts::resolverSessao) — tanto pra
+ * usuários normais quanto pro super_admin, que "entra" numa empresa via o
+ * mesmo cookie assiz_empresa_ativa; uma conta com várias MembroEmpresa
+ * também troca de empresa ativa pelo mesmo mecanismo (POST
+ * /api/empresas/[id]/entrar).
  */
 export async function getEmpresaAtivaId(session: SessionPayload): Promise<string | null> {
-  if (session.papel !== "super_admin") return session.empresaId;
-  const store = await cookies();
-  return store.get(EMPRESA_ATIVA_COOKIE)?.value ?? null;
+  return session.empresaId;
 }
 
 /** Confere que um lead pertence à empresa em contexto, para evitar acesso cross-tenant via id adivinhado. */

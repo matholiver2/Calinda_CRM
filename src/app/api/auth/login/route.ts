@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { comparePassword, signToken, AUTH_COOKIE } from "@/lib/auth";
+import { resolverSessao } from "@/lib/session";
+import { EMPRESA_ATIVA_COOKIE } from "@/lib/tenant";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -28,22 +30,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Credenciais inválidas" }, { status: 401 });
   }
 
-  const token = signToken({
-    id: usuario.id,
-    nome: usuario.nome,
-    email: usuario.email,
-    papel: usuario.papel,
-    empresaId: usuario.empresaId,
-  });
+  const token = signToken({ id: usuario.id, nome: usuario.nome, email: usuario.email });
+
+  // Resolve a empresa ativa (papel/empresaId não vêm mais do JWT — uma
+  // conta pode ter várias empresas, ver src/lib/session.ts). Sem
+  // MembroEmpresa ativo nenhum (e não sendo super_admin), a sessão fica
+  // inválida — mesmo efeito de "conta sem acesso" de antes.
+  const sessao = await resolverSessao({ id: usuario.id, nome: usuario.nome, email: usuario.email });
+  if (!sessao) {
+    return NextResponse.json({ erro: "Esta conta não tem acesso a nenhuma empresa" }, { status: 401 });
+  }
 
   const res = NextResponse.json({
     usuario: {
       id: usuario.id,
       nome: usuario.nome,
       email: usuario.email,
-      papel: usuario.papel,
+      papel: sessao.papel,
       avatarCor: usuario.avatarCor,
-      empresaId: usuario.empresaId,
+      empresaId: sessao.empresaId,
     },
   });
   res.cookies.set(AUTH_COOKIE, token, {
@@ -53,5 +58,14 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
   });
+  if (sessao.empresaId) {
+    res.cookies.set(EMPRESA_ATIVA_COOKIE, sessao.empresaId, {
+      httpOnly: false,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
+  }
   return res;
 }

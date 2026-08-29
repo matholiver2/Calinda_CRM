@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
-import { ChevronDown, Check, UserPlus, LogOut, X } from "lucide-react";
+import { ChevronDown, Check, UserPlus, LogOut, X, Building2 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -12,14 +12,29 @@ import { papelLabel, cn } from "@/lib/utils";
 import type { SessionPayload } from "@/lib/auth";
 
 type Conta = { id: string; nome: string; email: string; papel: string };
+type EmpresaConta = { id: string; nome: string; logoUrl: string | null; papel: string; ativa: boolean };
 
 export function AccountSwitcher({ usuario }: { usuario: SessionPayload }) {
   const router = useRouter();
   const { data, mutate } = useSWR<{ contas: Conta[]; ativaId: string }>("/api/auth/contas", fetcher);
+  const { data: minhasEmpresas } = useSWR<{ empresas: EmpresaConta[] }>("/api/auth/minhas-empresas", fetcher);
   const [aberto, setAberto] = useState(false);
   const [adicionando, setAdicionando] = useState(false);
   const [trocandoId, setTrocandoId] = useState<string | null>(null);
+  const [trocandoEmpresaId, setTrocandoEmpresaId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  async function trocarDeEmpresa(empresaId: string) {
+    setTrocandoEmpresaId(empresaId);
+    try {
+      await apiPost(`/api/empresas/${empresaId}/entrar`);
+      setAberto(false);
+      router.push("/dashboard");
+      router.refresh();
+    } finally {
+      setTrocandoEmpresaId(null);
+    }
+  }
 
   useEffect(() => {
     if (!aberto) return;
@@ -100,6 +115,31 @@ export function AccountSwitcher({ usuario }: { usuario: SessionPayload }) {
                   </button>
                 ))}
               </div>
+
+              {(minhasEmpresas?.empresas.length ?? 0) > 1 && (
+                <div className="border-t border-border p-1.5">
+                  <p className="px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wide text-fg-subtle">
+                    Trocar de empresa
+                  </p>
+                  {minhasEmpresas!.empresas.map((e) => (
+                    <button
+                      key={e.id}
+                      onClick={() => trocarDeEmpresa(e.id)}
+                      disabled={trocandoEmpresaId === e.id}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left hover:bg-surface-hover disabled:opacity-60"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-hover text-fg-subtle">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-fg">{e.nome}</p>
+                        <p className="truncate text-xs text-fg-subtle">{papelLabel(e.papel)}</p>
+                      </div>
+                      {e.ativa && <Check className="h-4 w-4 shrink-0 text-accent" />}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div className="space-y-1 border-t border-border p-1.5">
                 <button

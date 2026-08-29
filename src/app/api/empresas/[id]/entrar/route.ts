@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { requireSession, requireRole, isSessionResponse } from "@/lib/apiAuth";
+import { requireSession, isSessionResponse } from "@/lib/apiAuth";
 import { EMPRESA_ATIVA_COOKIE } from "@/lib/tenant";
 
+/**
+ * Troca a empresa ativa da sessão (cookie assiz_empresa_ativa) — usado tanto
+ * pelo super_admin (acesso irrestrito a qualquer empresa, comportamento
+ * original) quanto por qualquer conta com MembroEmpresa ativo naquela
+ * empresa (multi-empresa por conta única, ver src/lib/session.ts).
+ */
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   if (isSessionResponse(session)) return session;
-  const forbidden = requireRole(session, ["super_admin"]);
-  if (forbidden) return forbidden;
 
   const { id } = await params;
+
+  if (session.papel !== "super_admin") {
+    const membro = await prisma.membroEmpresa.findUnique({
+      where: { usuarioId_empresaId: { usuarioId: session.id, empresaId: id } },
+    });
+    if (!membro || !membro.ativo) {
+      return NextResponse.json({ erro: "Sem permissão para esta ação" }, { status: 403 });
+    }
+  }
+
   const empresa = await prisma.empresa.findUnique({ where: { id } });
   if (!empresa) return NextResponse.json({ erro: "Empresa não encontrada" }, { status: 404 });
 

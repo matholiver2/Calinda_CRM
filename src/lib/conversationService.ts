@@ -50,10 +50,12 @@ async function proximoHorarioLivre(vendedorId: string, desejado: Date): Promise<
 }
 
 async function escolherVendedor(empresaId: string) {
-  return prisma.usuario.findFirst({
+  const membro = await prisma.membroEmpresa.findFirst({
     where: { empresaId, papel: "vendedor", ativo: true },
     orderBy: { criadoEm: "asc" },
+    select: { usuarioId: true },
   });
+  return membro ? { id: membro.usuarioId } : null;
 }
 
 /**

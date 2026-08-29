@@ -27,12 +27,14 @@ export async function GET() {
       },
       include: { etapa: true },
     }),
-    prisma.usuario.findMany({
+    prisma.membroEmpresa.findMany({
       where: {
         empresaId: ctx.empresaId,
         papel: "vendedor",
-        ...(restringirAoVendedor ? { id: session.id } : {}),
+        ativo: true,
+        ...(restringirAoVendedor ? { usuarioId: session.id } : {}),
       },
+      include: { usuario: { select: { id: true, nome: true, avatarCor: true } } },
     }),
   ]);
 
@@ -82,7 +84,8 @@ export async function GET() {
   }));
 
   const performancePorVendedor = await Promise.all(
-    usuarios.map(async (u) => {
+    usuarios.map(async (m) => {
+      const u = m.usuario;
       const leadsAtribuidos = leads.filter((l) => l.vendedorId === u.id);
       const reunioes = await prisma.reuniao.findMany({ where: { vendedorId: u.id } });
       const fechadas = reunioes.filter((r) => r.resultado === "fechou").length;

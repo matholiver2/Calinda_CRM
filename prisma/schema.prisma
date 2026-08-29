@@ -20,6 +20,12 @@ enum Papel {
   vendedor
 }
 
+enum PapelEmpresa {
+  admin
+  gestor
+  vendedor
+}
+
 enum TipoEtapa {
   funil
   remarketing
@@ -111,7 +117,8 @@ model Empresa {
   logoUrl  String?  @db.Text @map("logo_url")
   criadoEm DateTime @default(now()) @map("criado_em")
 
-  usuarios      Usuario[]
+  membros       MembroEmpresa[]
+  usuarios      Usuario[] // DEPRECATED — ver comentário em Usuario.empresaId
   etapas        EtapaFunil[]
   leads         Lead[]
   agentesIa     AgenteIa[]
@@ -134,14 +141,22 @@ model Usuario {
   email     String   @unique
   senhaHash String?  @map("senha_hash")
   googleId  String?  @unique @map("google_id")
-  papel     Papel    @default(vendedor)
+  // DEPRECATED — dado já migrado pra MembroEmpresa (ver
+  // scripts/migrar-multi-empresa.ts). Nenhum código novo lê esses dois
+  // campos; ficam por enquanto só pra não dropar colunas em produção antes
+  // de todo o resto do app estar migrado e confirmado funcionando. Remover
+  // num cleanup separado, depois de validar em produção.
+  papel      Papel    @default(vendedor)
+  empresaId  String?  @map("empresa_id")
+  empresa    Empresa? @relation(fields: [empresaId], references: [id])
+  superAdmin Boolean @default(false) @map("super_admin")
   ativo     Boolean  @default(true)
   avatarCor String   @default("#DC2626") @map("avatar_cor")
   avatarUrl String?  @db.Text @map("avatar_url")
   onboardingPessoalConcluido Boolean @default(false) @map("onboarding_pessoal_concluido")
-  empresaId String?  @map("empresa_id")
-  empresa   Empresa? @relation(fields: [empresaId], references: [id])
   criadoEm  DateTime @default(now()) @map("criado_em")
+
+  membrosEmpresa MembroEmpresa[]
 
   // Google Calendar (por usuário — cada vendedor conecta o próprio Gmail)
   googleCalendarAccessToken  String?   @map("google_calendar_access_token")
@@ -159,6 +174,23 @@ model Usuario {
   vendas            Venda[]
 
   @@map("usuarios")
+}
+
+// Vínculo de uma conta (Usuario, identidade global) com uma empresa — uma
+// mesma conta pode ter um MembroEmpresa em várias empresas, cada um com seu
+// próprio papel. Substitui Usuario.empresaId/papel (deprecados acima).
+model MembroEmpresa {
+  id        String       @id @default(uuid())
+  usuarioId String       @map("usuario_id")
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresaId String       @map("empresa_id")
+  empresa   Empresa      @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  papel     PapelEmpresa
+  ativo     Boolean      @default(true)
+  criadoEm  DateTime     @default(now()) @map("criado_em")
+
+  @@unique([usuarioId, empresaId])
+  @@map("membros_empresa")
 }
 
 model Convite {
