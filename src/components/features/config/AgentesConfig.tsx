@@ -137,6 +137,7 @@ export function AgentesConfig({ podeEditar }: { podeEditar: boolean }) {
       </div>
 
       <AgenteFormDialog
+        key={criando ? "criando-aberto" : "criando-fechado"}
         open={criando}
         etapas={etapas}
         onClose={() => setCriando(false)}
@@ -154,6 +155,7 @@ export function AgentesConfig({ podeEditar }: { podeEditar: boolean }) {
       />
 
       <AgenteFormDialog
+        key={editando?.id ?? "editando-vazio"}
         open={!!editando}
         agente={editando ?? undefined}
         etapas={etapas}

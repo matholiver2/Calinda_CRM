@@ -76,6 +76,7 @@ export function EtapasConfig({ podeEditar }: { podeEditar: boolean }) {
       </div>
 
       <EtapaFormDialog
+        key={criando ? "criando-aberto" : "criando-fechado"}
         open={criando}
         onClose={() => setCriando(false)}
         onSalvar={async (dados) => {
@@ -92,6 +93,7 @@ export function EtapasConfig({ podeEditar }: { podeEditar: boolean }) {
       />
 
       <EtapaFormDialog
+        key={editando?.id ?? "editando-vazio"}
         open={!!editando}
         etapa={editando ?? undefined}
         onClose={() => setEditando(null)}

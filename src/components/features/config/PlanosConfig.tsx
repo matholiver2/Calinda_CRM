@@ -87,6 +87,7 @@ export function PlanosConfig({ podeEditar }: { podeEditar: boolean }) {
       </div>
 
       <PlanoFormDialog
+        key={criando ? "criando-aberto" : "criando-fechado"}
         open={criando}
         onClose={() => setCriando(false)}
         erro={erro}
@@ -103,6 +104,7 @@ export function PlanosConfig({ podeEditar }: { podeEditar: boolean }) {
       />
 
       <PlanoFormDialog
+        key={editando?.id ?? "editando-vazio"}
         open={!!editando}
         plano={editando ?? undefined}
         onClose={() => setEditando(null)}
