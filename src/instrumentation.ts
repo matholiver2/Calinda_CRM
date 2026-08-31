@@ -7,12 +7,14 @@
 const POLL_INTERVAL_MS = 5 * 60_000;
 const LEMBRETE_INTERVAL_MS = 2 * 60_000;
 const RESPOSTA_IA_POLL_INTERVAL_MS = 20_000;
+const LIMPEZA_ASSISTENTE_INTERVAL_MS = 6 * 60 * 60_000;
 
 declare global {
   var __calindaGoogleCalendarPollStarted: boolean | undefined;
   var __calindaRemarketingPollStarted: boolean | undefined;
   var __calindaLembretesPollStarted: boolean | undefined;
   var __calindaRespostaIaPollStarted: boolean | undefined;
+  var __calindaLimpezaAssistentePollStarted: boolean | undefined;
 }
 
 export async function register() {
@@ -64,5 +66,16 @@ export async function register() {
       });
     }, RESPOSTA_IA_POLL_INTERVAL_MS);
     console.log("[instrumentation] polling de respostas de IA agendadas ativo (a cada 20s)");
+  }
+
+  if (!globalThis.__calindaLimpezaAssistentePollStarted) {
+    globalThis.__calindaLimpezaAssistentePollStarted = true;
+    const { pollLimparAssistente } = await import("@/lib/assistenteHistorico");
+    setInterval(() => {
+      pollLimparAssistente().catch((err) => {
+        console.error("[instrumentation] erro ao limpar mensagens antigas do Assistente:", err);
+      });
+    }, LIMPEZA_ASSISTENTE_INTERVAL_MS);
+    console.log("[instrumentation] limpeza de mensagens antigas do Assistente ativa (a cada 6h)");
   }
 }

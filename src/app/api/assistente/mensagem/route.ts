@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSession, isSessionResponse, requireEmpresaContext, isEmpresaContextResponse } from "@/lib/apiAuth";
-import { gerarRespostaAssistente, type TurnoAssistente } from "@/lib/ai/assistenteEngine";
+import { gerarRespostaAssistente } from "@/lib/ai/assistenteEngine";
+import { carregarHistoricoAssistente, salvarTurnoAssistente } from "@/lib/assistenteHistorico";
 
 export async function POST(req: Request) {
   const session = await requireSession();
@@ -10,27 +11,32 @@ export async function POST(req: Request) {
   if (isEmpresaContextResponse(ctx)) return ctx;
 
   const body = await req.json().catch(() => null);
-  const historico = (Array.isArray(body?.historico) ? body.historico : []) as TurnoAssistente[];
-  if (historico.length === 0 || historico[historico.length - 1]?.autor !== "usuario") {
-    return NextResponse.json({ erro: "Histórico inválido" }, { status: 400 });
+  const texto = typeof body?.texto === "string" ? body.texto.trim() : "";
+  if (!texto) {
+    return NextResponse.json({ erro: "Mensagem vazia" }, { status: 400 });
   }
 
-  const [empresa, config] = await Promise.all([
+  const [empresa, config, historico] = await Promise.all([
     prisma.empresa.findUnique({ where: { id: ctx.empresaId }, select: { nome: true } }),
     prisma.configuracao.findUnique({
       where: { empresaId_chave: { empresaId: ctx.empresaId, chave: "empresa_sobre" } },
     }),
+    carregarHistoricoAssistente(session.id, ctx.empresaId),
   ]);
+
+  await salvarTurnoAssistente(session.id, ctx.empresaId, "usuario", texto);
 
   // Limita o histórico enviado à IA — chat de apoio não precisa do
   // contexto inteiro da conversa desde o início.
-  const historicoRecente = historico.slice(-30);
+  const historicoRecente = [...historico, { autor: "usuario" as const, texto }].slice(-30);
 
   const resposta = await gerarRespostaAssistente(historicoRecente, {
     empresaNome: empresa?.nome ?? "sua empresa",
     empresaSobre: config?.valor ?? null,
     usuarioNome: session.nome.split(" ")[0],
   });
+
+  await salvarTurnoAssistente(session.id, ctx.empresaId, "assistente", resposta);
 
   return NextResponse.json({ resposta });
 }

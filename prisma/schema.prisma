@@ -118,6 +118,7 @@ model Empresa {
   criadoEm DateTime @default(now()) @map("criado_em")
 
   membros       MembroEmpresa[]
+  assistenteMensagens AssistenteMensagem[]
   usuarios      Usuario[] // DEPRECATED — ver comentário em Usuario.empresaId
   etapas        EtapaFunil[]
   leads         Lead[]
@@ -157,6 +158,7 @@ model Usuario {
   criadoEm  DateTime @default(now()) @map("criado_em")
 
   membrosEmpresa MembroEmpresa[]
+  assistenteMensagens AssistenteMensagem[]
 
   // Google Calendar (por usuário — cada vendedor conecta o próprio Gmail)
   googleCalendarAccessToken  String?   @map("google_calendar_access_token")
@@ -409,6 +411,24 @@ model Venda {
   criadoEm           DateTime       @default(now()) @map("criado_em")
 
   @@map("vendas")
+}
+
+// Chat "Assistente" (apoio ao vendedor, distinto da conversa com o lead) —
+// escopado por usuário+empresa, já que o contexto do assistente muda por
+// empresa (empresa_sobre) e cada conta agora pode ter várias. Mensagens
+// somem depois de 30 dias (ver pollLimparAssistente em
+// src/lib/assistenteHistorico.ts).
+model AssistenteMensagem {
+  id        String   @id @default(uuid())
+  usuarioId String   @map("usuario_id")
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  empresaId String   @map("empresa_id")
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  autor     String
+  conteudo  String
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  @@map("assistente_mensagens")
 }
 
 model Notificacao {
