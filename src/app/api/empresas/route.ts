@@ -102,6 +102,7 @@ export async function POST(req: Request) {
           nome: etapaPadrao.agenteNome,
           persona: PERSONA_PADRAO,
           objetivo: etapaPadrao.agenteObjetivo,
+          modeloLlm: "gemini-3.6-flash",
         },
       });
     }

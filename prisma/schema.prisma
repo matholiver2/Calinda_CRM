@@ -326,7 +326,7 @@ model AgenteIa {
   objetivo  String
   etapaId   String     @map("etapa_id")
   etapa     EtapaFunil @relation(fields: [etapaId], references: [id])
-  modeloLlm String     @default("claude-sonnet") @map("modelo_llm")
+  modeloLlm String     @default("gemini-3.6-flash") @map("modelo_llm")
   ativo     Boolean    @default(true)
 
   @@map("agentes_ia")

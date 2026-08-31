@@ -34,7 +34,10 @@ export async function POST(req: Request) {
     const empresa = await prisma.empresa.findUnique({ where: { id: ctx.empresaId }, select: { nome: true } });
     await prisma.agenteIa.updateMany({
       where: { empresaId: ctx.empresaId },
-      data: { persona: `Você é o assistente virtual da ${empresa?.nome ?? "empresa"}. ${empresaSobre}` },
+      data: {
+        persona: `Você é o assistente virtual da ${empresa?.nome ?? "empresa"}. ${empresaSobre}`,
+        modeloLlm: "gemini-3.6-flash",
+      },
     });
   }
 

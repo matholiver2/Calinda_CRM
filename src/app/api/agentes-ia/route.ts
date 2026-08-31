@@ -45,7 +45,7 @@ export async function POST(req: Request) {
   }
 
   const agente = await prisma.agenteIa.create({
-    data: { empresaId: ctx.empresaId, nome, etapaId, persona, objetivo, modeloLlm: body?.modeloLlm ?? "claude-sonnet" },
+    data: { empresaId: ctx.empresaId, nome, etapaId, persona, objetivo, modeloLlm: body?.modeloLlm ?? "gemini-3.6-flash" },
   });
   return NextResponse.json({ agente }, { status: 201 });
 }
