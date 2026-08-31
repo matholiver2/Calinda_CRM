@@ -20,12 +20,21 @@ export async function resolverSessao(identidade: IdentidadePayload): Promise<Ses
   const usuario = await prisma.usuario.findUnique({ where: { id: identidade.id } });
   if (!usuario || !usuario.ativo) return null;
 
-  if (usuario.superAdmin) {
-    return { id: usuario.id, nome: usuario.nome, email: usuario.email, papel: "super_admin", empresaId: null };
-  }
-
   const store = await cookies();
   const empresaAtivaCookie = store.get(EMPRESA_ATIVA_COOKIE)?.value;
+
+  if (usuario.superAdmin) {
+    // super_admin não tem MembroEmpresa — "entra" numa empresa via o cookie
+    // direto (acesso irrestrito, sem checar vínculo nenhum). Sem cookie,
+    // fica sem empresa ativa (empresaId null) até escolher uma em /empresas.
+    return {
+      id: usuario.id,
+      nome: usuario.nome,
+      email: usuario.email,
+      papel: "super_admin",
+      empresaId: empresaAtivaCookie ?? null,
+    };
+  }
 
   let membro = empresaAtivaCookie
     ? await prisma.membroEmpresa.findUnique({
