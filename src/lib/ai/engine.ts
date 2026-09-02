@@ -214,6 +214,59 @@ function simularReengajamento(input: ReengajamentoInput): ReengajamentoDecisao {
   };
 }
 
+export type MensagemComBaseInput = {
+  /** Texto configurado pelo usuário (Configurar IA) — usado como inspiração, não copiado ao pé da letra. */
+  baseTexto: string;
+  /** Descrição curta do que essa mensagem é, pro prompt (ex: "primeira mensagem de boas-vindas a um lead novo"). */
+  tarefa: string;
+  leadNome: string;
+  persona: string;
+  historico?: MensagemContexto[];
+  /** "whatsapp" (padrão): breve e informal. "email": pode ser um pouco mais completo/formal. */
+  formato?: "whatsapp" | "email";
+};
+
+/**
+ * Gera uma mensagem nova "baseada em" um texto configurado — usado quando
+ * o modo da mensagem (Configurar IA) é "ia" em vez de "literal": a pessoa
+ * escreve um texto de referência e a IA adapta com naturalidade a cada
+ * envio, em vez de mandar sempre o mesmo texto igual.
+ */
+export async function gerarMensagemComBase(input: MensagemComBaseInput): Promise<string> {
+  try {
+    const systemPrompt = `Você é um agente de IA de vendas dentro de um CRM chamado CALINDA.
+Persona/empresa: ${input.persona}
+
+Sua tarefa é escrever ${input.tarefa} para o lead ${input.leadNome}, usando o texto abaixo como BASE/inspiração — não copie ao pé da letra, adapte com naturalidade ao momento da conversa, mas mantenha a essência e as informações importantes dele:
+
+"${input.baseTexto}"
+
+Responda em português (pt-BR), ${
+      input.formato === "email"
+        ? "com tom de e-mail (pode ser um pouco mais completo que uma mensagem de WhatsApp, mas ainda direto e sem formalidade excessiva)"
+        : "tom de WhatsApp (breve, natural)"
+    }. Responda SOMENTE em JSON válido, no formato:
+{"mensagem": string}`;
+
+    // A API do Gemini exige pelo menos um turno em "contents" — sem
+    // histórico (primeira mensagem, finalização), manda um pedido explícito
+    // em vez de mandar a lista vazia (Gemini responde 400 nesse caso).
+    const contents: GeminiContent[] =
+      input.historico && input.historico.length > 0
+        ? input.historico.map((m) => ({
+            role: m.remetente === "lead" ? ("user" as const) : ("model" as const),
+            parts: [{ text: m.conteudo }],
+          }))
+        : [{ role: "user", parts: [{ text: "(sem histórico de conversa — escreva a mensagem com base no texto acima)" }] }];
+
+    const parsed = await chamarGemini(systemPrompt, contents);
+    return String(parsed.mensagem ?? input.baseTexto);
+  } catch (err) {
+    console.error("[ai/engine] Falha ao gerar mensagem com base, usando o texto configurado ao pé da letra:", err);
+    return input.baseTexto;
+  }
+}
+
 // --- Simulador local (modo demo, sem custo/latência de API externa) ---
 
 const PALAVRAS_NEGATIVAS = [

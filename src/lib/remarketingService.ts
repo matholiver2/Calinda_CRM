@@ -2,6 +2,7 @@ import { prisma, comRetryConexao } from "@/lib/db";
 import { gerarReengajamento } from "@/lib/ai/engine";
 import { enviarEAtualizarStatus } from "@/lib/conversationService";
 import { criarNotificacao } from "@/lib/notificacoes";
+import { resolverTextoConfiguravel } from "@/lib/mensagemConfiguravel";
 
 const INTERVALO_PADRAO_DIAS = 3;
 
@@ -27,29 +28,35 @@ export async function enviarReengajamentoRemarketing(leadId: string) {
   );
   if (lead.status !== "remarketing" || !lead.iaAtiva) return null;
 
-  const configTemplate = await comRetryConexao(() =>
-    prisma.configuracao.findUnique({
-      where: { empresaId_chave: { empresaId: lead.empresaId, chave: "remarketing_mensagem_template" } },
-    })
+  const agente = await comRetryConexao(() =>
+    prisma.agenteIa.findFirst({ where: { etapaId: lead.etapaAtualId, ativo: true } })
   );
+  const historicoRows = await comRetryConexao(() =>
+    prisma.mensagem.findMany({ where: { leadId: lead.id }, orderBy: { enviadoEm: "asc" }, take: 30 })
+  );
+  const historico = historicoRows.map((m) => ({ remetente: m.remetente, conteudo: m.conteudo }));
+
+  // Mensagem configurada na tela Configurar IA — modo "literal" sai tal
+  // como escrita, modo "ia" usa como base (com o histórico da conversa
+  // real desse lead) pra IA adaptar. Sem nada configurado, a IA decide
+  // sozinha o que escrever e também se desiste de reengajar de vez.
+  const textoConfigurado = await resolverTextoConfiguravel({
+    empresaId: lead.empresaId,
+    chaveTemplate: "remarketing_mensagem_template",
+    chaveModo: "remarketing_mensagem_modo",
+    leadNome: lead.nome,
+    empresaNome: lead.empresa.nome,
+    persona: agente?.persona ?? `Você representa a ${lead.empresa.nome}.`,
+    tarefa: "uma mensagem de remarketing pra reengajar um lead que esfriou",
+    historico,
+  });
 
   let texto: string;
   let desistir = false;
 
-  if (configTemplate?.valor) {
-    // Mensagem configurada na tela Configurar IA — enviada tal como
-    // escrita (mesmo padrão de primeira_mensagem_template), sem a IA
-    // decidir se desiste de reengajar; ela só decide isso quando está
-    // gerando a mensagem sozinha (branch abaixo).
-    texto = configTemplate.valor.replaceAll("{nome}", lead.nome.split(" ")[0]).replaceAll("{empresa}", lead.empresa.nome);
+  if (textoConfigurado) {
+    texto = textoConfigurado;
   } else {
-    const agente = await comRetryConexao(() =>
-      prisma.agenteIa.findFirst({ where: { etapaId: lead.etapaAtualId, ativo: true } })
-    );
-    const historicoRows = await comRetryConexao(() =>
-      prisma.mensagem.findMany({ where: { leadId: lead.id }, orderBy: { enviadoEm: "asc" }, take: 30 })
-    );
-    const historico = historicoRows.map((m) => ({ remetente: m.remetente, conteudo: m.conteudo }));
     const diasSemContato = Math.floor((Date.now() - lead.atualizadoEm.getTime()) / 86_400_000);
 
     const decisao = await gerarReengajamento({

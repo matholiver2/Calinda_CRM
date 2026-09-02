@@ -2,16 +2,38 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles, FlagOff, Mail } from "lucide-react";
+import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles, Mail } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { DictationButton } from "@/components/ui/DictationButton";
 import { fetcher, apiPatch, ApiError } from "@/lib/fetcher";
-import { CARD } from "@/lib/utils";
+import { CARD, cn } from "@/lib/utils";
 import { AgentesConfig } from "@/components/features/config/AgentesConfig";
 
 type ConfiguracoesResposta = { configuracoes: Record<string, string> };
+type Modo = "literal" | "ia";
+
+const MENSAGENS_TABS = [
+  {
+    chave: "primeira_mensagem",
+    label: "Primeira mensagem",
+    descricao: "Enviada automaticamente pra todo lead novo assim que ele é criado.",
+    placeholder: "Olá, {nome}! Aqui é da {empresa}...",
+  },
+  {
+    chave: "remarketing_mensagem",
+    label: "Remarketing",
+    descricao: "Enviada automaticamente pro lead reengajar depois de um tempo sem contato.",
+    placeholder: "Oi, {nome}! Passando pra saber se ainda tem interesse em falar com a gente na {empresa}...",
+  },
+  {
+    chave: "mensagem_finalizacao",
+    label: "Finalização",
+    descricao: 'Enviada automaticamente quando a conversa entra na etapa "Finalizado" do funil.',
+    placeholder: "Foi um prazer falar com você, {nome}! Se precisar de mais alguma coisa, é só chamar por aqui.",
+  },
+] as const;
 
 export default function ConfigurarIaPage() {
   const { data: meData } = useSWR<{ usuario: { papel: string } }>("/api/auth/me", fetcher);
@@ -24,7 +46,7 @@ export default function ConfigurarIaPage() {
     <div>
       <PageHeader
         title="Configurar IA"
-        description="Tudo que envolve a automação por IA — primeira mensagem, contexto da empresa, remarketing e agentes"
+        description="Tudo que envolve a automação por IA — mensagens, contexto da empresa, remarketing e agentes"
         actions={
           podeEditar && (
             <a href="/onboarding">
@@ -37,14 +59,9 @@ export default function ConfigurarIaPage() {
       />
 
       <div className="space-y-5">
-        <TextoLongoCard
-          key={`primeira-${data ? "carregado" : "carregando"}`}
-          icone={MessageSquareText}
-          titulo="Primeira mensagem"
-          descricao='Enviada automaticamente pra todo lead novo, exatamente como escrita aqui — use {nome} e {empresa} como variáveis.'
-          chave="primeira_mensagem_template"
-          valorInicial={data?.configuracoes.primeira_mensagem_template ?? ""}
-          placeholder="Olá, {nome}! Aqui é da {empresa}..."
+        <MensagensAutomaticasCard
+          key={`mensagens-${data ? "carregado" : "carregando"}`}
+          configuracoes={data?.configuracoes ?? {}}
           podeEditar={podeEditar}
           onSalvo={() => mutate()}
         />
@@ -61,34 +78,11 @@ export default function ConfigurarIaPage() {
           onSalvo={() => mutate()}
         />
 
-        <TextoLongoCard
-          key={`remarketing-${data ? "carregado" : "carregando"}`}
-          icone={Repeat2}
-          titulo="Mensagem de remarketing"
-          descricao='Enviada automaticamente pro lead reengajar, exatamente como escrita aqui — use {nome} e {empresa}. Deixe em branco pra IA gerar a mensagem sozinha a cada vez, olhando o histórico da conversa.'
-          chave="remarketing_mensagem_template"
-          valorInicial={data?.configuracoes.remarketing_mensagem_template ?? ""}
-          placeholder="Oi, {nome}! Passando pra saber se ainda tem interesse em falar com a gente na {empresa}..."
-          podeEditar={podeEditar}
-          onSalvo={() => mutate()}
-        />
-
-        <TextoLongoCard
-          key={`finalizacao-${data ? "carregado" : "carregando"}`}
-          icone={FlagOff}
-          titulo="Mensagem de finalização"
-          descricao='Enviada automaticamente quando a conversa entra na etapa "Finalizado" do funil — use {nome} e {empresa}.'
-          chave="mensagem_finalizacao_template"
-          valorInicial={data?.configuracoes.mensagem_finalizacao_template ?? ""}
-          placeholder="Foi um prazer falar com você, {nome}! Se precisar de mais alguma coisa, é só chamar por aqui."
-          podeEditar={podeEditar}
-          onSalvo={() => mutate()}
-        />
-
         <ConviteReuniaoEmailCard
           key={`convite-reuniao-${data ? "carregado" : "carregando"}`}
           assuntoInicial={data?.configuracoes.convite_reuniao_email_assunto ?? ""}
           corpoInicial={data?.configuracoes.convite_reuniao_email_corpo ?? ""}
+          modoInicial={(data?.configuracoes.convite_reuniao_email_modo as Modo) ?? "literal"}
           podeEditar={podeEditar}
           onSalvo={() => mutate()}
         />
@@ -106,6 +100,177 @@ export default function ConfigurarIaPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** Botão duplo "manda igual escrito" vs "IA usa como base" — reaproveitado em toda mensagem configurável. */
+function ModoToggle({
+  modo,
+  onChange,
+  podeEditar,
+}: {
+  modo: Modo;
+  onChange: (modo: Modo) => void;
+  podeEditar: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <button
+        type="button"
+        disabled={!podeEditar}
+        onClick={() => onChange("literal")}
+        className={cn(
+          "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60",
+          modo === "literal" ? "border-accent bg-accent-soft text-accent" : "border-border text-fg-muted"
+        )}
+      >
+        Enviar exatamente como está
+      </button>
+      <button
+        type="button"
+        disabled={!podeEditar}
+        onClick={() => onChange("ia")}
+        className={cn(
+          "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-60",
+          modo === "ia" ? "border-accent bg-accent-soft text-accent" : "border-border text-fg-muted"
+        )}
+      >
+        Usar como base pra IA escrever
+      </button>
+    </div>
+  );
+}
+
+function MensagensAutomaticasCard({
+  configuracoes,
+  podeEditar,
+  onSalvo,
+}: {
+  configuracoes: Record<string, string>;
+  podeEditar: boolean;
+  onSalvo: () => void;
+}) {
+  const [abaAtiva, setAbaAtiva] = useState<(typeof MENSAGENS_TABS)[number]["chave"]>("primeira_mensagem");
+  const aba = MENSAGENS_TABS.find((t) => t.chave === abaAtiva)!;
+
+  return (
+    <div className={CARD}>
+      <div className="mb-4 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+          <MessageSquareText className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-fg">Mensagens automáticas</h2>
+          <p className="text-xs text-fg-subtle">
+            Primeira mensagem, remarketing e finalização — use {"{nome}"} e {"{empresa}"} como variáveis.
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-border">
+        {MENSAGENS_TABS.map((t) => (
+          <button
+            key={t.chave}
+            onClick={() => setAbaAtiva(t.chave)}
+            className={cn(
+              "shrink-0 border-b-2 px-3.5 py-2 text-sm font-medium transition-colors",
+              abaAtiva === t.chave ? "border-accent text-accent" : "border-transparent text-fg-muted hover:text-fg"
+            )}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <MensagemConfiguravelForm
+        key={aba.chave}
+        chaveTemplate={`${aba.chave}_template`}
+        chaveModo={`${aba.chave}_modo`}
+        valorInicial={configuracoes[`${aba.chave}_template`] ?? ""}
+        modoInicial={(configuracoes[`${aba.chave}_modo`] as Modo) ?? "literal"}
+        descricao={aba.descricao}
+        placeholder={aba.placeholder}
+        podeEditar={podeEditar}
+        onSalvo={onSalvo}
+      />
+    </div>
+  );
+}
+
+function MensagemConfiguravelForm({
+  chaveTemplate,
+  chaveModo,
+  valorInicial,
+  modoInicial,
+  descricao,
+  placeholder,
+  podeEditar,
+  onSalvo,
+}: {
+  chaveTemplate: string;
+  chaveModo: string;
+  valorInicial: string;
+  modoInicial: Modo;
+  descricao: string;
+  placeholder: string;
+  podeEditar: boolean;
+  onSalvo: () => void;
+}) {
+  const [valor, setValor] = useState(valorInicial);
+  const [modo, setModo] = useState<Modo>(modoInicial);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState(false);
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    setSucesso(false);
+    setLoading(true);
+    try {
+      await apiPatch("/api/configuracoes", { chave: chaveTemplate, valor });
+      await apiPatch("/api/configuracoes", { chave: chaveModo, valor: modo });
+      setSucesso(true);
+      onSalvo();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao salvar");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={salvar} className="space-y-3">
+      <p className="text-xs text-fg-subtle">{descricao}</p>
+
+      <div>
+        <label className="mb-1.5 block text-xs font-medium text-fg-muted">Como enviar</label>
+        <ModoToggle modo={modo} onChange={setModo} podeEditar={podeEditar} />
+        <p className="mt-1.5 text-xs text-fg-subtle">
+          {modo === "literal"
+            ? "A mensagem sai exatamente como escrita abaixo."
+            : "A IA usa o texto abaixo só como referência e escreve uma versão adaptada a cada envio."}
+        </p>
+      </div>
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="block text-xs font-medium text-fg-muted">Texto</label>
+          {podeEditar && <DictationButton valorAtual={valor} onTexto={setValor} />}
+        </div>
+        <Textarea rows={5} value={valor} onChange={(e) => setValor(e.target.value)} placeholder={placeholder} disabled={!podeEditar} />
+      </div>
+
+      {erro && <p className="text-sm text-danger">{erro}</p>}
+      {sucesso && <p className="text-sm text-success">Salvo.</p>}
+      {podeEditar && (
+        <div className="flex justify-end">
+          <Button type="submit" size="sm" loading={loading}>
+            <Save className="h-3.5 w-3.5" /> Salvar
+          </Button>
+        </div>
+      )}
+    </form>
   );
 }
 
@@ -186,16 +351,19 @@ const CORPO_CONVITE_PADRAO =
 function ConviteReuniaoEmailCard({
   assuntoInicial,
   corpoInicial,
+  modoInicial,
   podeEditar,
   onSalvo,
 }: {
   assuntoInicial: string;
   corpoInicial: string;
+  modoInicial: Modo;
   podeEditar: boolean;
   onSalvo: () => void;
 }) {
   const [assunto, setAssunto] = useState(assuntoInicial);
   const [corpo, setCorpo] = useState(corpoInicial);
+  const [modo, setModo] = useState<Modo>(modoInicial);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [sucesso, setSucesso] = useState(false);
@@ -208,6 +376,7 @@ function ConviteReuniaoEmailCard({
     try {
       await apiPatch("/api/configuracoes", { chave: "convite_reuniao_email_assunto", valor: assunto });
       await apiPatch("/api/configuracoes", { chave: "convite_reuniao_email_corpo", valor: corpo });
+      await apiPatch("/api/configuracoes", { chave: "convite_reuniao_email_modo", valor: modo });
       setSucesso(true);
       onSalvo();
     } catch (err) {
@@ -244,6 +413,17 @@ function ConviteReuniaoEmailCard({
             disabled={!podeEditar}
           />
         </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-fg-muted">Como enviar o corpo do e-mail</label>
+          <ModoToggle modo={modo} onChange={setModo} podeEditar={podeEditar} />
+          <p className="mt-1.5 text-xs text-fg-subtle">
+            {modo === "literal"
+              ? "O e-mail sai exatamente com o texto abaixo."
+              : "A IA usa o texto abaixo só como referência e escreve uma versão adaptada a cada envio."}
+          </p>
+        </div>
+
         <div>
           <label className="mb-1.5 block text-xs font-medium text-fg-muted">Corpo do e-mail</label>
           <Textarea

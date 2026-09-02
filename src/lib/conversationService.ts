@@ -4,6 +4,7 @@ import { getWhatsAppProvider } from "@/lib/whatsapp/provider";
 import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
 import { criarNotificacao } from "@/lib/notificacoes";
 import { enviarConviteReuniaoPorEmail } from "@/lib/reuniaoEmail";
+import { resolverTextoConfiguravel } from "@/lib/mensagemConfiguravel";
 
 const REUNIAO_DIAS_A_FRENTE = 2;
 
@@ -402,17 +403,22 @@ export async function dispararPrimeiraMensagem(leadId: string) {
   });
 
   // A primeira mensagem é configurável (Configurar IA → Primeira mensagem)
-  // e sai exatamente como definida — não é a IA improvisando texto genérico.
-  // Só cai pra geração livre se a empresa nunca configurou um texto.
-  const configTemplate = await prisma.configuracao.findUnique({
-    where: { empresaId_chave: { empresaId: lead.empresaId, chave: "primeira_mensagem_template" } },
+  // — modo "literal" manda exatamente como escrita, modo "ia" usa como
+  // base pra IA adaptar. Só cai pra geração livre (sem base nenhuma) se a
+  // empresa nunca configurou um texto.
+  const textoConfigurado = await resolverTextoConfiguravel({
+    empresaId: lead.empresaId,
+    chaveTemplate: "primeira_mensagem_template",
+    chaveModo: "primeira_mensagem_modo",
+    leadNome: lead.nome,
+    empresaNome: lead.empresa.nome,
+    persona: `Você representa a ${lead.empresa.nome}.`,
+    tarefa: "a primeira mensagem de boas-vindas a um lead novo",
   });
 
   let texto: string;
-  if (configTemplate?.valor) {
-    texto = configTemplate.valor
-      .replaceAll("{nome}", lead.nome.split(" ")[0])
-      .replaceAll("{empresa}", lead.empresa.nome);
+  if (textoConfigurado) {
+    texto = textoConfigurado;
   } else {
     const agente = await prisma.agenteIa.findFirst({
       where: { etapaId: lead.etapaAtualId, ativo: true },
@@ -451,16 +457,19 @@ export async function dispararMensagemFinalizacao(leadId: string) {
     include: { empresa: true },
   });
 
-  const configTemplate = await prisma.configuracao.findUnique({
-    where: { empresaId_chave: { empresaId: lead.empresaId, chave: "mensagem_finalizacao_template" } },
+  const textoConfigurado = await resolverTextoConfiguravel({
+    empresaId: lead.empresaId,
+    chaveTemplate: "mensagem_finalizacao_template",
+    chaveModo: "mensagem_finalizacao_modo",
+    leadNome: lead.nome,
+    empresaNome: lead.empresa.nome,
+    persona: `Você representa a ${lead.empresa.nome}.`,
+    tarefa: "uma mensagem de encerramento, agradecendo a conversa e se despedindo",
   });
 
-  const texto = (
-    configTemplate?.valor ||
-    "Foi um prazer falar com você, {nome}! Se precisar de mais alguma coisa, é só chamar por aqui. 😊"
-  )
-    .replaceAll("{nome}", lead.nome.split(" ")[0])
-    .replaceAll("{empresa}", lead.empresa.nome);
+  const texto =
+    textoConfigurado ??
+    `Foi um prazer falar com você, ${lead.nome.split(" ")[0]}! Se precisar de mais alguma coisa, é só chamar por aqui. 😊`;
 
   const mensagem = await prisma.mensagem.create({
     data: { leadId: lead.id, remetente: "ia", conteudo: texto, statusEntrega: "enviado" },

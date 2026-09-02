@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { enviarEmailSimples } from "@/lib/gmail";
+import { gerarMensagemComBase } from "@/lib/ai/engine";
 
 const ASSUNTO_PADRAO = "Reunião com {empresa} — {data}";
 const CORPO_PADRAO =
@@ -48,11 +49,12 @@ export async function enviarConviteReuniaoPorEmail(reuniaoId: string): Promise<v
     const configs = await prisma.configuracao.findMany({
       where: {
         empresaId: reuniao.lead.empresaId,
-        chave: { in: ["convite_reuniao_email_assunto", "convite_reuniao_email_corpo"] },
+        chave: { in: ["convite_reuniao_email_assunto", "convite_reuniao_email_corpo", "convite_reuniao_email_modo"] },
       },
     });
     const assuntoTemplate = configs.find((c) => c.chave === "convite_reuniao_email_assunto")?.valor || ASSUNTO_PADRAO;
     const corpoTemplate = configs.find((c) => c.chave === "convite_reuniao_email_corpo")?.valor || CORPO_PADRAO;
+    const modo = configs.find((c) => c.chave === "convite_reuniao_email_modo")?.valor ?? "literal";
 
     const vars = {
       nome: reuniao.lead.nome.split(" ")[0],
@@ -61,10 +63,24 @@ export async function enviarConviteReuniaoPorEmail(reuniaoId: string): Promise<v
       link: reuniao.linkCalendario,
     };
 
+    // Assunto é sempre literal (linha curta e factual) — só o corpo pode
+    // usar o texto configurado como base pra IA adaptar.
+    const corpoSubstituido = preencherVariaveis(corpoTemplate, vars);
+    const corpo =
+      modo === "ia"
+        ? await gerarMensagemComBase({
+            baseTexto: corpoSubstituido,
+            tarefa: "um e-mail de confirmação de reunião, com o link do Google Meet",
+            leadNome: vars.nome,
+            persona: `Você representa a ${vars.empresa}.`,
+            formato: "email",
+          })
+        : corpoSubstituido;
+
     const resultado = await enviarEmailSimples(reuniao.vendedor, {
       para: reuniao.lead.email,
       assunto: preencherVariaveis(assuntoTemplate, vars),
-      corpo: preencherVariaveis(corpoTemplate, vars),
+      corpo,
     });
 
     if (!resultado.ok) {
