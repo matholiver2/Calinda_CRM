@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles, FlagOff } from "lucide-react";
+import { Save, MessageSquareText, Building2, Repeat2, CalendarClock, Sparkles, FlagOff, Mail } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -85,6 +85,14 @@ export default function ConfigurarIaPage() {
           onSalvo={() => mutate()}
         />
 
+        <ConviteReuniaoEmailCard
+          key={`convite-reuniao-${data ? "carregado" : "carregando"}`}
+          assuntoInicial={data?.configuracoes.convite_reuniao_email_assunto ?? ""}
+          corpoInicial={data?.configuracoes.convite_reuniao_email_corpo ?? ""}
+          podeEditar={podeEditar}
+          onSalvo={() => mutate()}
+        />
+
         <IntervaloRemarketingCard
           key={`intervalo-${data ? "carregado" : "carregando"}`}
           valorInicial={data?.configuracoes.remarketing_intervalo_dias ?? "3"}
@@ -157,6 +165,95 @@ function TextoLongoCard({
       </div>
       <form onSubmit={salvar} className="space-y-3">
         <Textarea rows={5} value={valor} onChange={(e) => setValor(e.target.value)} placeholder={placeholder} disabled={!podeEditar} />
+        {erro && <p className="text-sm text-danger">{erro}</p>}
+        {sucesso && <p className="text-sm text-success">Salvo.</p>}
+        {podeEditar && (
+          <div className="flex justify-end">
+            <Button type="submit" size="sm" loading={loading}>
+              <Save className="h-3.5 w-3.5" /> Salvar
+            </Button>
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
+const ASSUNTO_CONVITE_PADRAO = "Reunião com {empresa} — {data}";
+const CORPO_CONVITE_PADRAO =
+  "Olá, {nome}!\n\nSua reunião com a {empresa} está confirmada para {data}.\n\nLink do Google Meet: {link}\n\nAté lá!";
+
+function ConviteReuniaoEmailCard({
+  assuntoInicial,
+  corpoInicial,
+  podeEditar,
+  onSalvo,
+}: {
+  assuntoInicial: string;
+  corpoInicial: string;
+  podeEditar: boolean;
+  onSalvo: () => void;
+}) {
+  const [assunto, setAssunto] = useState(assuntoInicial);
+  const [corpo, setCorpo] = useState(corpoInicial);
+  const [loading, setLoading] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const [sucesso, setSucesso] = useState(false);
+
+  async function salvar(e: React.FormEvent) {
+    e.preventDefault();
+    setErro(null);
+    setSucesso(false);
+    setLoading(true);
+    try {
+      await apiPatch("/api/configuracoes", { chave: "convite_reuniao_email_assunto", valor: assunto });
+      await apiPatch("/api/configuracoes", { chave: "convite_reuniao_email_corpo", valor: corpo });
+      setSucesso(true);
+      onSalvo();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao salvar");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className={CARD}>
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+            <Mail className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-fg">Convite de reunião por e-mail</h2>
+            <p className="text-xs text-fg-subtle">
+              Enviado pro lead quando uma reunião é marcada como Google Meet — use {"{nome}"}, {"{empresa}"},{" "}
+              {"{data}"} e {"{link}"} como variáveis.
+            </p>
+          </div>
+        </div>
+        {podeEditar && <DictationButton valorAtual={corpo} onTexto={setCorpo} />}
+      </div>
+      <form onSubmit={salvar} className="space-y-3">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-fg-muted">Assunto</label>
+          <Input
+            value={assunto}
+            onChange={(e) => setAssunto(e.target.value)}
+            placeholder={ASSUNTO_CONVITE_PADRAO}
+            disabled={!podeEditar}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-fg-muted">Corpo do e-mail</label>
+          <Textarea
+            rows={5}
+            value={corpo}
+            onChange={(e) => setCorpo(e.target.value)}
+            placeholder={CORPO_CONVITE_PADRAO}
+            disabled={!podeEditar}
+          />
+        </div>
         {erro && <p className="text-sm text-danger">{erro}</p>}
         {sucesso && <p className="text-sm text-success">Salvo.</p>}
         {podeEditar && (
