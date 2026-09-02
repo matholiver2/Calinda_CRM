@@ -24,9 +24,30 @@ import {
   Plus,
   ChevronDown,
   Check,
+  Users,
+  Tag,
 } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import { CARD, CARD_LG, iniciais } from "@/lib/utils";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type LeadRecente = {
+  id: string;
+  nome: string;
+  origem: string;
+  etapa: string;
+  cor: string;
+  entrouEm: string;
+  vendedor: string | null;
+};
+
+type MetricaGeral = {
+  totalLeads: number;
+  leadsAtivos: number;
+  leadsCliente: number;
+  leadsRecentes: LeadRecente[];
+};
 
 type ResumoDashboard = {
   periodoMeses: number;
@@ -88,6 +109,9 @@ export default function DashboardPage() {
     { refreshInterval: 30000 }
   );
   const periodoLabel = PERIODOS.find((p) => p.meses === periodoMeses)?.label ?? "Últimos 6 meses";
+
+  const { data: metricas } = useSWR<MetricaGeral>("/api/dashboard/metrica-geral", fetcher, { refreshInterval: 30000 });
+  const leadsRecentes = metricas?.leadsRecentes ?? [];
 
   const receitaPorMes = resumo?.receitaPorMes ?? [];
   const mesDestaque = receitaPorMes.reduce(
@@ -370,6 +394,69 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Row 3: leads recentes */}
+      <div className={`${CARD_LG} mt-5`}>
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+              <Users className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-fg">Leads Recentes</h3>
+              <p className="text-xs text-fg-subtle">
+                {metricas ? `${metricas.totalLeads} leads · ${metricas.leadsAtivos} ativos` : "Últimos leads que entraram"}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/leads"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-hover text-fg-muted hover:bg-border"
+          >
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {leadsRecentes.length === 0 ? (
+          <p className="py-10 text-center text-sm text-fg-subtle">Nenhum lead cadastrado ainda.</p>
+        ) : (
+          <div className="space-y-1">
+            {leadsRecentes.map((lead) => (
+              <Link
+                key={lead.id}
+                href={`/leads/${lead.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-2.5 hover:bg-surface-hover"
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white"
+                    style={{ backgroundColor: lead.cor }}
+                  >
+                    {iniciais(lead.nome)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-fg">{lead.nome}</p>
+                    <p className="flex items-center gap-1 text-xs text-fg-subtle">
+                      <Tag className="h-3 w-3" /> {lead.origem}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span
+                    className="rounded-full px-2.5 py-1 text-xs font-medium"
+                    style={{ backgroundColor: `${lead.cor}22`, color: lead.cor }}
+                  >
+                    {lead.etapa}
+                  </span>
+                  <span className="text-xs text-fg-subtle">
+                    {formatDistanceToNow(new Date(lead.entrouEm), { addSuffix: true, locale: ptBR })}
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
