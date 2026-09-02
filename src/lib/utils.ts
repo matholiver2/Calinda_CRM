@@ -60,7 +60,14 @@ const STATUS_LABEL: Record<string, string> = {
   cliente: "Cliente",
   perdido: "Perdido",
   remarketing: "Remarketing",
+  finalizado: "Finalizado",
 };
 export function statusLabel(status: string): string {
   return STATUS_LABEL[status] ?? status;
+}
+
+export function formatarTamanhoArquivo(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

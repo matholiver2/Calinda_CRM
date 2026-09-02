@@ -8,6 +8,7 @@ import {
 } from "@/lib/apiAuth";
 import { leadPertenceAEmpresa } from "@/lib/tenant";
 import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
+import { enviarConviteReuniaoPorEmail } from "@/lib/reuniaoEmail";
 
 export async function GET(req: Request) {
   const session = await requireSession();
@@ -58,5 +59,6 @@ export async function POST(req: Request) {
     include: { lead: true, vendedor: true },
   });
   void sincronizarReuniaoComGoogle(reuniao.id);
+  void enviarConviteReuniaoPorEmail(reuniao.id);
   return NextResponse.json({ reuniao }, { status: 201 });
 }

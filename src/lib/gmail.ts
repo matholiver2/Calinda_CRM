@@ -18,6 +18,50 @@ function paraBase64Url(texto: string): string {
     .replace(/=+$/, "");
 }
 
+/** Envio simples, sem anexo — usado pra convite de reunião com o link do Meet. */
+export async function enviarEmailSimples(
+  usuario: Usuario,
+  params: { para: string; assunto: string; corpo: string }
+): Promise<{ ok: true } | { ok: false; erro: string }> {
+  const token = await accessTokenValido(usuario);
+  if (!token) {
+    return { ok: false, erro: "Google não conectado. Conecte em Configurações → Integrações." };
+  }
+
+  const remetente = usuario.googleCalendarEmail ?? usuario.email;
+
+  const mime = [
+    `From: ${remetente}`,
+    `To: ${params.para}`,
+    `Subject: ${encodeSubject(params.assunto)}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: base64",
+    "",
+    Buffer.from(params.corpo, "utf-8").toString("base64"),
+  ].join("\r\n");
+
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "content-type": "application/json" },
+    body: JSON.stringify({ raw: paraBase64Url(mime) }),
+  });
+
+  if (!res.ok) {
+    const texto = await res.text().catch(() => "");
+    console.error("[gmail] falha ao enviar:", res.status, texto);
+    if (res.status === 403) {
+      return {
+        ok: false,
+        erro: "Sem permissão pra enviar e-mail pelo Google — reconecte em Configurações → Integrações.",
+      };
+    }
+    return { ok: false, erro: "Falha ao enviar e-mail" };
+  }
+
+  return { ok: true };
+}
+
 export async function enviarEmailComAnexo(
   usuario: Usuario,
   params: {

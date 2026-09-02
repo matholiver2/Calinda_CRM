@@ -7,6 +7,7 @@ import {
   isEmpresaContextResponse,
 } from "@/lib/apiAuth";
 import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
+import { enviarConviteReuniaoPorEmail } from "@/lib/reuniaoEmail";
 
 /**
  * Atualiza uma reunião (status/resultado). Quando o resultado é "não fechou",
@@ -40,6 +41,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     include: { lead: true },
   });
   void sincronizarReuniaoComGoogle(reuniao.id);
+  // Só reenvia o convite quando essa chamada de fato tocou a modalidade —
+  // evita mandar e-mail de novo em toda edição de status/resultado.
+  if (body?.modalidade !== undefined) {
+    void enviarConviteReuniaoPorEmail(reuniao.id);
+  }
 
   if (body?.resultado === "nao_fechou") {
     const etapaRemarketing = await prisma.etapaFunil.findFirst({

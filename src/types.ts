@@ -32,6 +32,7 @@ export type Lead = {
   entrouEm: string;
   atualizadoEm: string;
   respostaIaAgendadaPara: string | null;
+  observacoes: string | null;
   _count?: { mensagens: number };
 };
 

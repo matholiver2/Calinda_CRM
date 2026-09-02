@@ -77,6 +77,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Nenhuma etapa de funil configurada" }, { status: 500 });
   }
 
+  // Lead adicionado manualmente (ex: sem WhatsApp conectado ainda, sem
+  // histórico pra IA trabalhar em cima) pode nascer com a IA pausada —
+  // quem cadastrou decide se dispara a primeira mensagem ou não.
+  const iniciarComIa = body?.iniciarComIa !== false;
+
   const lead = await prisma.lead.create({
     data: {
       empresaId: ctx.empresaId,
@@ -85,6 +90,7 @@ export async function POST(req: Request) {
       email: body?.email ?? null,
       origem: body?.origem ?? "Não informado",
       etapaAtualId: primeiraEtapa.id,
+      iaAtiva: iniciarComIa,
     },
     include: { etapaAtual: true },
   });
@@ -93,10 +99,12 @@ export async function POST(req: Request) {
     data: { leadId: lead.id, etapaId: primeiraEtapa.id, motivoTransicao: "criacao_lead" },
   });
 
-  try {
-    await dispararPrimeiraMensagem(lead.id);
-  } catch (err) {
-    console.error("[leads] Falha ao disparar primeira mensagem automática:", err);
+  if (iniciarComIa) {
+    try {
+      await dispararPrimeiraMensagem(lead.id);
+    } catch (err) {
+      console.error("[leads] Falha ao disparar primeira mensagem automática:", err);
+    }
   }
 
   return NextResponse.json({ lead }, { status: 201 });

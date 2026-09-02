@@ -3,6 +3,7 @@ import { gerarResposta } from "@/lib/ai/engine";
 import { getWhatsAppProvider } from "@/lib/whatsapp/provider";
 import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
 import { criarNotificacao } from "@/lib/notificacoes";
+import { enviarConviteReuniaoPorEmail } from "@/lib/reuniaoEmail";
 
 const REUNIAO_DIAS_A_FRENTE = 2;
 
@@ -365,6 +366,7 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
           },
         });
         await enviarEAtualizarStatus(mensagemLink.id, lead.empresaId, lead.telefone, mensagemLink.conteudo);
+        void enviarConviteReuniaoPorEmail(reuniaoCriada.id);
       }
     }
   }

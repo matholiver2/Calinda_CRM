@@ -244,6 +244,7 @@ model Lead {
   vendedor     Usuario?   @relation("VendedorLeads", fields: [vendedorId], references: [id])
   status       StatusLead @default(ativo)
   iaAtiva      Boolean    @default(true) @map("ia_ativa")
+  observacoes  String?    @db.Text
   entrouEm     DateTime   @default(now()) @map("entrou_em")
   atualizadoEm DateTime   @updatedAt @map("atualizado_em")
 
@@ -263,6 +264,7 @@ model Lead {
   orcamentos    Orcamento[]
   vendas        Venda[]
   notificacoes  Notificacao[]
+  pastasArquivo PastaArquivo[]
 
   @@unique([empresaId, telefone])
   @@map("leads")
@@ -453,6 +455,11 @@ model PastaArquivo {
   empresaId String    @map("empresa_id")
   empresa   Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
   nome      String
+  // Pasta "do cliente" criada automaticamente na tela do Lead — no máximo
+  // uma por lead (ver GET /api/leads/[id]/arquivos, find-or-create). Pastas
+  // manuais (tela Arquivos) têm leadId nulo, sem mudança de comportamento.
+  leadId    String?   @unique @map("lead_id")
+  lead      Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   criadoEm  DateTime  @default(now()) @map("criado_em")
 
   arquivos Arquivo[]

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { mutate } from "swr";
+import { Bot, BotOff } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +15,8 @@ export function NovoLeadDialog({ open, onClose }: { open: boolean; onClose: () =
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
   const [origem, setOrigem] = useState(ORIGENS[0]);
+  const [origemOutra, setOrigemOutra] = useState("");
+  const [iniciarComIa, setIniciarComIa] = useState(true);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -22,6 +25,8 @@ export function NovoLeadDialog({ open, onClose }: { open: boolean; onClose: () =
     setTelefone("");
     setEmail("");
     setOrigem(ORIGENS[0]);
+    setOrigemOutra("");
+    setIniciarComIa(true);
     setErro(null);
     onClose();
   }
@@ -29,9 +34,19 @@ export function NovoLeadDialog({ open, onClose }: { open: boolean; onClose: () =
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
+    if (origem === "Outro" && !origemOutra.trim()) {
+      setErro("Descreva a origem do lead");
+      return;
+    }
     setLoading(true);
     try {
-      await apiPost("/api/leads", { nome, telefone, email: email || undefined, origem });
+      await apiPost("/api/leads", {
+        nome,
+        telefone,
+        email: email || undefined,
+        origem: origem === "Outro" ? origemOutra.trim() : origem,
+        iniciarComIa,
+      });
       mutate("/api/leads");
       mutate("/api/dashboard/metrica-geral");
       fechar();
@@ -71,7 +86,46 @@ export function NovoLeadDialog({ open, onClose }: { open: boolean; onClose: () =
               </option>
             ))}
           </Select>
+          {origem === "Outro" && (
+            <Input
+              required
+              className="mt-2"
+              value={origemOutra}
+              onChange={(e) => setOrigemOutra(e.target.value)}
+              placeholder="De onde veio esse lead?"
+            />
+          )}
         </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-fg-muted">IA no WhatsApp</label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setIniciarComIa(true)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2 text-sm transition-colors ${
+                iniciarComIa ? "border-accent bg-accent-soft text-accent" : "border-border text-fg-muted"
+              }`}
+            >
+              <Bot className="h-3.5 w-3.5" /> Começar com IA
+            </button>
+            <button
+              type="button"
+              onClick={() => setIniciarComIa(false)}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[10px] border px-3 py-2 text-sm transition-colors ${
+                !iniciarComIa ? "border-accent bg-accent-soft text-accent" : "border-border text-fg-muted"
+              }`}
+            >
+              <BotOff className="h-3.5 w-3.5" /> Pausar IA
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-fg-subtle">
+            {iniciarComIa
+              ? "A IA envia a primeira mensagem pelo WhatsApp assim que o lead for criado."
+              : "Nenhuma mensagem automática é enviada — ideal quando o histórico com esse cliente já existe fora do sistema (ex: sem WhatsApp conectado ainda)."}
+          </p>
+        </div>
+
         {erro && <p className="text-sm text-danger">{erro}</p>}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={fechar}>

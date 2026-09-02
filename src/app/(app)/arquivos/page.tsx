@@ -20,16 +20,11 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input, Select } from "@/components/ui/Input";
 import { fetcher, apiPost, apiDelete, ApiError } from "@/lib/fetcher";
+import { formatarTamanhoArquivo } from "@/lib/utils";
 import type { Lead } from "@/types";
 
 type Pasta = { id: string; nome: string; criadoEm: string; _count: { arquivos: number } };
 type Arquivo = { id: string; nome: string; tamanhoBytes: number; mimeType: string; criadoEm: string };
-
-function formatarTamanho(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 export default function ArquivosPage() {
   const [pastaAtualId, setPastaAtualId] = useState<string | null>(null);
@@ -222,7 +217,7 @@ function PastaView({ pasta, onVoltar }: { pasta: Pasta; onVoltar: () => void }) 
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-fg">{arquivo.nome}</p>
-                  <p className="text-xs text-fg-subtle">{formatarTamanho(arquivo.tamanhoBytes)}</p>
+                  <p className="text-xs text-fg-subtle">{formatarTamanhoArquivo(arquivo.tamanhoBytes)}</p>
                 </div>
               </div>
               <div className="flex shrink-0 items-center gap-1">

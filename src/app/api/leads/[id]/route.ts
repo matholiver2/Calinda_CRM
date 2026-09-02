@@ -54,6 +54,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       origem: body?.origem,
       vendedorId: body?.vendedorId,
       status: body?.status,
+      observacoes: body?.observacoes !== undefined ? body.observacoes || null : undefined,
     },
     include: { etapaAtual: true, vendedor: true },
   });
