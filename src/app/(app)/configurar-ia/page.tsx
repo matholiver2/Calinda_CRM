@@ -33,6 +33,12 @@ const MENSAGENS_TABS = [
     descricao: 'Enviada automaticamente quando a conversa entra na etapa "Finalizado" do funil.',
     placeholder: "Foi um prazer falar com você, {nome}! Se precisar de mais alguma coisa, é só chamar por aqui.",
   },
+  {
+    chave: "followup_mensagem",
+    label: "Follow-up",
+    descricao: 'Enviada periodicamente pros clientes (aba "Cliente" do lead) — um check-in perguntando se está tudo bem.',
+    placeholder: "Oi, {nome}! Passando aqui pra saber se está tudo bem e se você precisa de mais alguma coisa da {empresa}. 😊",
+  },
 ] as const;
 
 export default function ConfigurarIaPage() {
@@ -87,12 +93,26 @@ export default function ConfigurarIaPage() {
           onSalvo={() => mutate()}
         />
 
-        <IntervaloRemarketingCard
-          key={`intervalo-${data ? "carregado" : "carregando"}`}
-          valorInicial={data?.configuracoes.remarketing_intervalo_dias ?? "3"}
-          podeEditar={podeEditar}
-          onSalvo={() => mutate()}
-        />
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <IntervaloDiasCard
+            key={`intervalo-remarketing-${data ? "carregado" : "carregando"}`}
+            chave="remarketing_intervalo_dias"
+            titulo="Intervalo de remarketing"
+            descricao="Dias sem contato até a IA reengajar automaticamente um lead."
+            valorInicial={data?.configuracoes.remarketing_intervalo_dias ?? "3"}
+            podeEditar={podeEditar}
+            onSalvo={() => mutate()}
+          />
+          <IntervaloDiasCard
+            key={`intervalo-followup-${data ? "carregado" : "carregando"}`}
+            chave="followup_intervalo_dias"
+            titulo="Intervalo de follow-up"
+            descricao="Dias sem contato até o sistema mandar um check-in pra um cliente."
+            valorInicial={data?.configuracoes.followup_intervalo_dias ?? "30"}
+            podeEditar={podeEditar}
+            onSalvo={() => mutate()}
+          />
+        </div>
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-fg">Agentes de IA por etapa do funil</h2>
@@ -162,7 +182,7 @@ function MensagensAutomaticasCard({
         <div>
           <h2 className="text-sm font-semibold text-fg">Mensagens automáticas</h2>
           <p className="text-xs text-fg-subtle">
-            Primeira mensagem, remarketing e finalização — use {"{nome}"} e {"{empresa}"} como variáveis.
+            Primeira mensagem, remarketing, finalização e follow-up — use {"{nome}"} e {"{empresa}"} como variáveis.
           </p>
         </div>
       </div>
@@ -448,11 +468,17 @@ function ConviteReuniaoEmailCard({
   );
 }
 
-function IntervaloRemarketingCard({
+function IntervaloDiasCard({
+  chave,
+  titulo,
+  descricao,
   valorInicial,
   podeEditar,
   onSalvo,
 }: {
+  chave: string;
+  titulo: string;
+  descricao: string;
   valorInicial: string;
   podeEditar: boolean;
   onSalvo: () => void;
@@ -468,7 +494,7 @@ function IntervaloRemarketingCard({
     setSucesso(false);
     setLoading(true);
     try {
-      await apiPatch("/api/configuracoes", { chave: "remarketing_intervalo_dias", valor: intervaloDias });
+      await apiPatch("/api/configuracoes", { chave, valor: intervaloDias });
       setSucesso(true);
       onSalvo();
     } catch (err) {
@@ -485,8 +511,8 @@ function IntervaloRemarketingCard({
           <Repeat2 className="h-4 w-4" />
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-fg">Intervalo de remarketing</h2>
-          <p className="text-xs text-fg-subtle">Dias sem contato até a IA reengajar automaticamente um lead.</p>
+          <h2 className="text-sm font-semibold text-fg">{titulo}</h2>
+          <p className="text-xs text-fg-subtle">{descricao}</p>
         </div>
       </div>
       <form onSubmit={salvar} className="space-y-3">
