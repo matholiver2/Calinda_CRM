@@ -87,7 +87,12 @@ export async function GET() {
     usuarios.map(async (m) => {
       const u = m.usuario;
       const leadsAtribuidos = leads.filter((l) => l.vendedorId === u.id);
-      const reunioes = await prisma.reuniao.findMany({ where: { vendedorId: u.id } });
+      // Reuniao não tem empresaId direto — sem filtrar por lead.empresaId,
+      // um vendedor que é membro de mais de uma empresa (conta única
+      // multi-empresa) tinha reuniões de outras empresas somadas aqui.
+      const reunioes = await prisma.reuniao.findMany({
+        where: { vendedorId: u.id, lead: { empresaId: ctx.empresaId } },
+      });
       const fechadas = reunioes.filter((r) => r.resultado === "fechou").length;
       return {
         vendedorId: u.id,

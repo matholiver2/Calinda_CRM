@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -21,11 +22,14 @@ import {
   ArrowLeftRight,
   Calendar,
   Plus,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { fetcher } from "@/lib/fetcher";
 import { CARD, CARD_LG, iniciais } from "@/lib/utils";
 
 type ResumoDashboard = {
+  periodoMeses: number;
   totalMesAtual: number;
   receitaSemana: number;
   receitaPorMes: { mes: string; valor: number }[];
@@ -52,6 +56,12 @@ const FORMA_PAGAMENTO_ICON: Record<string, { icon: typeof Zap; cor: string; labe
 
 const AVATAR_CORES = ["#F59E0B", "#EF4444", "#3B82F6", "#8B5CF6", "#10B981", "#EC4899"];
 
+const PERIODOS = [
+  { meses: 1, label: "Último mês" },
+  { meses: 3, label: "Últimos 3 meses" },
+  { meses: 6, label: "Últimos 6 meses" },
+] as const;
+
 function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
 }
@@ -59,9 +69,25 @@ function formatarMoeda(valor: number): string {
 export default function DashboardPage() {
   const { data: me } = useSWR<{ usuario: { nome: string } }>("/api/auth/me", fetcher);
   const primeiroNome = me?.usuario?.nome?.split(" ")[0] ?? "";
-  const { data: resumo, isLoading } = useSWR<ResumoDashboard>("/api/dashboard/vendas-resumo", fetcher, {
-    refreshInterval: 30000,
-  });
+  const [periodoMeses, setPeriodoMeses] = useState<1 | 3 | 6>(6);
+  const [periodoAberto, setPeriodoAberto] = useState(false);
+  const periodoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!periodoAberto) return;
+    function onClickFora(e: MouseEvent) {
+      if (periodoRef.current && !periodoRef.current.contains(e.target as Node)) setPeriodoAberto(false);
+    }
+    document.addEventListener("mousedown", onClickFora);
+    return () => document.removeEventListener("mousedown", onClickFora);
+  }, [periodoAberto]);
+
+  const { data: resumo, isLoading } = useSWR<ResumoDashboard>(
+    `/api/dashboard/vendas-resumo?periodo=${periodoMeses}`,
+    fetcher,
+    { refreshInterval: 30000 }
+  );
+  const periodoLabel = PERIODOS.find((p) => p.meses === periodoMeses)?.label ?? "Últimos 6 meses";
 
   const receitaPorMes = resumo?.receitaPorMes ?? [];
   const mesDestaque = receitaPorMes.reduce(
@@ -79,10 +105,33 @@ export default function DashboardPage() {
           Bem-vindo, <span className="font-normal text-fg-subtle">{primeiroNome}</span>
         </h1>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-fg-muted hover:bg-surface-hover">
-            <Calendar className="h-4 w-4 text-fg-subtle" />
-            Últimos 6 meses
-          </button>
+          <div ref={periodoRef} className="relative">
+            <button
+              onClick={() => setPeriodoAberto((v) => !v)}
+              className="flex items-center gap-2 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-fg-muted hover:bg-surface-hover"
+            >
+              <Calendar className="h-4 w-4 text-fg-subtle" />
+              {periodoLabel}
+              <ChevronDown className="h-3.5 w-3.5 text-fg-subtle" />
+            </button>
+            {periodoAberto && (
+              <div className="absolute right-0 top-[calc(100%+8px)] z-20 w-48 rounded-[14px] border border-border bg-bg-elevated p-1.5 shadow-[var(--shadow-float)]">
+                {PERIODOS.map((p) => (
+                  <button
+                    key={p.meses}
+                    onClick={() => {
+                      setPeriodoMeses(p.meses);
+                      setPeriodoAberto(false);
+                    }}
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-fg-muted hover:bg-surface-hover hover:text-fg"
+                  >
+                    {p.label}
+                    {p.meses === periodoMeses && <Check className="h-3.5 w-3.5 text-accent" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <Link
             href="/vendas"
             className="flex items-center gap-1.5 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
@@ -167,7 +216,7 @@ export default function DashboardPage() {
               <Repeat className="h-4 w-4" />
             </div>
           </div>
-          <p className="mb-1 text-xs text-fg-subtle">Últimos 10 dias</p>
+          <p className="mb-1 text-xs text-fg-subtle">No período selecionado</p>
           <p className="mb-4 text-2xl font-bold text-fg">{resumo?.recorrentes.total ?? 0}</p>
           <div className="mb-5 h-16">
             <ResponsiveContainer width="100%" height="100%">

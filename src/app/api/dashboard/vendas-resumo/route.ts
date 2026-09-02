@@ -10,14 +10,20 @@ import { decimalParaNumero } from "@/lib/utils";
 
 const MESES = ["JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
 
-export async function GET() {
+const PERIODOS_VALIDOS = [1, 3, 6];
+
+export async function GET(req: Request) {
   const session = await requireSession();
   if (isSessionResponse(session)) return session;
   const ctx = await requireEmpresaContext(session);
   if (isEmpresaContextResponse(ctx)) return ctx;
 
+  const { searchParams } = new URL(req.url);
+  const periodoParam = Number(searchParams.get("periodo"));
+  const periodoMeses = PERIODOS_VALIDOS.includes(periodoParam) ? periodoParam : 6;
+
   const agora = new Date();
-  const inicioJanela = new Date(agora.getFullYear(), agora.getMonth() - 5, 1);
+  const inicioJanela = new Date(agora.getFullYear(), agora.getMonth() - (periodoMeses - 1), 1);
 
   // Vendedor só vê as próprias vendas — gestor e admin veem de todos.
   const restringirAoVendedor = session.papel === "vendedor";
@@ -45,7 +51,7 @@ export async function GET() {
   const receitaSemana = valores.filter((v) => v.dataPagamento >= seteDiasAtras).reduce((s, v) => s + v.valorNum, 0);
 
   const receitaPorMes: { mes: string; valor: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
+  for (let i = periodoMeses - 1; i >= 0; i--) {
     const d = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
     const total = valores
       .filter((v) => v.dataPagamento.getFullYear() === d.getFullYear() && v.dataPagamento.getMonth() === d.getMonth())
@@ -78,9 +84,12 @@ export async function GET() {
     )
     .reduce((s, v) => s + (v.comissaoIntegral ? v.valorNum : (v.valorNum * decimalParaNumero(v.comissaoPercentual ?? 0)) / 100), 0);
 
-  const recorrentesAtivas = valores.filter((v) => v.recorrente).slice(0, 8);
+  // O total precisa ser da lista inteira — cortar antes de contar limitava
+  // "Vendas Recorrentes" em no máximo 8 mesmo com muito mais vendas ativas.
+  const recorrentesAtivas = valores.filter((v) => v.recorrente);
 
   return NextResponse.json({
+    periodoMeses,
     totalMesAtual,
     receitaSemana,
     receitaPorMes,
@@ -89,7 +98,7 @@ export async function GET() {
     comissaoMes,
     recorrentes: {
       total: recorrentesAtivas.length,
-      nomes: recorrentesAtivas.map((v) => v.lead?.nome ?? "Cliente avulso"),
+      nomes: recorrentesAtivas.slice(0, 8).map((v) => v.lead?.nome ?? "Cliente avulso"),
     },
   });
 }
