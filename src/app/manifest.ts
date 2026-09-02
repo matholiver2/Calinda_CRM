@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CALINDA",
-    short_name: "CALINDA",
+    name: "Calinda - CRM de Vendas",
+    short_name: "Calinda",
     description: "CRM automatizado com IA — condução de leads via WhatsApp até o agendamento de reunião.",
     start_url: "/dashboard",
     display: "standalone",
