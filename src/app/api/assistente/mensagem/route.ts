@@ -34,6 +34,8 @@ export async function POST(req: Request) {
     empresaNome: empresa?.nome ?? "sua empresa",
     empresaSobre: config?.valor ?? null,
     usuarioNome: session.nome.split(" ")[0],
+    usuarioId: session.id,
+    empresaId: ctx.empresaId,
   });
 
   await salvarTurnoAssistente(session.id, ctx.empresaId, "assistente", resposta);

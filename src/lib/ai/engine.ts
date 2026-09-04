@@ -75,6 +75,93 @@ export async function chamarGemini(
   return JSON.parse(text.trim());
 }
 
+export type FerramentaDeclaracao = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+};
+
+/**
+ * Turno já "cru" no formato da API — usado quando é preciso incluir uma
+ * chamada de função e sua resposta na conversa. Essa API não tem role
+ * "function" (só aceita USER/MODEL/etc — confirmado por erro 400 em
+ * teste real); a resposta da função vai como "user" mesmo, só com uma
+ * part de functionResponse em vez de texto.
+ */
+export type GeminiConteudoCru = { role: "user" | "model"; parts: Record<string, unknown>[] };
+
+export type RespostaComFerramenta =
+  | { tipo: "texto"; texto: string }
+  | {
+      tipo: "chamada_funcao";
+      nome: string;
+      argumentos: Record<string, unknown>;
+      /** Modelos "thinking" (ex: gemini-3.6) exigem devolver isso junto quando a
+       * chamada de função é ecoada de volta na próxima mensagem — sem isso a
+       * API responde 400 (confirmado em teste real). */
+      thoughtSignature?: string;
+    };
+
+/**
+ * Chamada ao Gemini com function calling — usada pelo Assistente
+ * (src/lib/ai/assistenteEngine.ts) pra poder de fato agir no sistema (ex:
+ * agendar reunião), não só conversar. Diferente de chamarGemini, não força
+ * responseMimeType: json (incompatível com tools na prática) — o modelo
+ * decide entre responder em texto normal ou pedir pra chamar uma função.
+ */
+export async function chamarGeminiComFerramentas(
+  systemPrompt: string,
+  contents: (GeminiContent | GeminiConteudoCru)[],
+  ferramentas: FerramentaDeclaracao[]
+): Promise<RespostaComFerramenta> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        tools: [{ functionDeclarations: ferramentas }],
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const corpo = await res.text().catch(() => "");
+    console.error(`[ai/engine] Gemini (function calling) respondeu ${res.status}:`, corpo);
+    throw new Error(`Gemini API respondeu ${res.status}`);
+  }
+
+  const data = (await res.json()) as {
+    candidates?: {
+      content?: {
+        parts?: {
+          text?: string;
+          functionCall?: { name: string; args?: Record<string, unknown> };
+          thoughtSignature?: string;
+        }[];
+      };
+    }[];
+  };
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  const partComChamada = parts.find((p) => p.functionCall);
+  if (partComChamada?.functionCall) {
+    return {
+      tipo: "chamada_funcao",
+      nome: partComChamada.functionCall.name,
+      argumentos: partComChamada.functionCall.args ?? {},
+      thoughtSignature: partComChamada.thoughtSignature,
+    };
+  }
+
+  const texto = parts.map((p) => p.text ?? "").join("");
+  return { tipo: "texto", texto: texto || "Certo!" };
+}
+
 export async function gerarResposta(input: AiEngineInput): Promise<AiDecision> {
   try {
     return await gerarComGemini(input);

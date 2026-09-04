@@ -27,14 +27,20 @@ function preencherVariaveis(
  * vendedor atribuído, vendedor sem Google conectado) — a reunião continua
  * válida mesmo sem esse e-mail sair, é só um "a mais".
  */
-export async function enviarConviteReuniaoPorEmail(reuniaoId: string): Promise<void> {
+export async function enviarConviteReuniaoPorEmail(reuniaoId: string, emailsAdicionais: string[] = []): Promise<void> {
   try {
     const reuniao = await prisma.reuniao.findUnique({
       where: { id: reuniaoId },
       include: { lead: { include: { empresa: true } }, vendedor: true },
     });
     if (!reuniao || reuniao.modalidade !== "google_meet" || !reuniao.linkCalendario) return;
-    if (!reuniao.lead.email || !reuniao.vendedor) return;
+    if (!reuniao.vendedor) return;
+
+    // Convite vai pro e-mail do lead (se tiver) e pra qualquer endereço extra
+    // pedido explicitamente (ex: "agenda e manda pro fulano@email.com" no
+    // chat Assistente — ver src/lib/ai/assistenteEngine.ts).
+    const destinatarios = [...new Set([reuniao.lead.email, ...emailsAdicionais].filter((e): e is string => !!e))];
+    if (destinatarios.length === 0) return;
 
     const dataFormatada = reuniao.dataHora.toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
@@ -78,7 +84,7 @@ export async function enviarConviteReuniaoPorEmail(reuniaoId: string): Promise<v
         : corpoSubstituido;
 
     const resultado = await enviarEmailSimples(reuniao.vendedor, {
-      para: reuniao.lead.email,
+      para: destinatarios.join(", "),
       assunto: preencherVariaveis(assuntoTemplate, vars),
       corpo,
     });
