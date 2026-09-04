@@ -12,12 +12,17 @@ import { pollFollowUpClientes } from "@/lib/followUpService";
  * requisições). Ver src/lib/conversationService.ts::pollRespostasIaAgendadas.
  */
 
-const LIMPEZA_ASSISTENTE_INTERVALO_MS = 6 * 60 * 60_000; // não precisa rodar a cada tick de 20s
+const LIMPEZA_ASSISTENTE_INTERVALO_MS = 6 * 60 * 60_000; // não precisa rodar a cada tick
 const REMARKETING_INTERVALO_MS = 60 * 60_000; // intervalo é medido em dias, checar toda hora já sobra
 const FOLLOWUP_INTERVALO_MS = 60 * 60_000;
+// Piso mesmo pra resposta de IA (a única que roda a cada tick) — segurança
+// extra contra excesso de conexão no Postgres se o heartbeat do worker
+// ficar mais frequente de novo no futuro, ou se dois ticks se sobrepuserem.
+const RESPOSTA_IA_INTERVALO_MINIMO_MS = 15_000;
 let ultimaLimpezaAssistente = 0;
 let ultimoRemarketing = 0;
 let ultimoFollowUp = 0;
+let ultimaRespostaIa = 0;
 
 export async function POST(req: Request) {
   const secretEsperado = process.env.WHATSAPP_WORKER_SECRET;
@@ -25,10 +30,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Não autorizado" }, { status: 401 });
   }
 
-  try {
-    await pollRespostasIaAgendadas();
-  } catch (err) {
-    console.error("[cron/tick] erro ao processar respostas de IA agendadas:", err);
+  if (Date.now() - ultimaRespostaIa > RESPOSTA_IA_INTERVALO_MINIMO_MS) {
+    ultimaRespostaIa = Date.now();
+    try {
+      await pollRespostasIaAgendadas();
+    } catch (err) {
+      console.error("[cron/tick] erro ao processar respostas de IA agendadas:", err);
+    }
   }
 
   if (Date.now() - ultimoRemarketing > REMARKETING_INTERVALO_MS) {

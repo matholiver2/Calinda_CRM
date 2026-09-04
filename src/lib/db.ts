@@ -8,7 +8,12 @@ export const prisma =
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Cachear em globalThis também em produção (não só dev) — em serverless
+// (Vercel), cada invocação que não reaproveita isso cria um PrismaClient
+// novo com o próprio pool de conexões, multiplicando quantas conexões
+// batem no pooler do Supabase ao mesmo tempo. Combinado com CONNECTION_LIMIT
+// baixo no DATABASE_URL (ver .env), isso é o que evita esgotar o pooler.
+globalForPrisma.prisma = prisma;
 
 /**
  * Jobs de longa duração (ex: polling em background) às vezes reutilizam uma
