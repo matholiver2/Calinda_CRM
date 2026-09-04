@@ -132,6 +132,7 @@ model Empresa {
   notificacoes   Notificacao[]
   pastasArquivo  PastaArquivo[]
   arquivos       Arquivo[]
+  gruposCliente  GrupoCliente[]
 
   @@map("empresas")
 }
@@ -245,6 +246,8 @@ model Lead {
   status       StatusLead @default(ativo)
   iaAtiva      Boolean    @default(true) @map("ia_ativa")
   observacoes  String?    @db.Text
+  grupoId      String?    @map("grupo_id")
+  grupo        GrupoCliente? @relation(fields: [grupoId], references: [id], onDelete: SetNull)
   entrouEm     DateTime   @default(now()) @map("entrou_em")
   atualizadoEm DateTime   @updatedAt @map("atualizado_em")
 
@@ -268,6 +271,23 @@ model Lead {
 
   @@unique([empresaId, telefone])
   @@map("leads")
+}
+
+// Grupo de clientes (ex: "VIP", "Inadimplente", "Plano anual") — só pra
+// organização/marcação visual na tela de Clientes, um lead pertence a no
+// máximo um grupo por vez.
+model GrupoCliente {
+  id        String   @id @default(uuid())
+  empresaId String   @map("empresa_id")
+  empresa   Empresa  @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome      String
+  descricao String?
+  cor       String   @default("#6B7280")
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  leads Lead[]
+
+  @@map("grupos_cliente")
 }
 
 model HistoricoEtapa {

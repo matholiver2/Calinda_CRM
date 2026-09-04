@@ -17,6 +17,15 @@ export type VendedorResumo = {
   email?: string;
 };
 
+export type GrupoCliente = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  cor: string;
+  criadoEm?: string;
+  _count?: { leads: number };
+};
+
 export type Lead = {
   id: string;
   nome: string;
@@ -33,6 +42,8 @@ export type Lead = {
   atualizadoEm: string;
   respostaIaAgendadaPara: string | null;
   observacoes: string | null;
+  grupoId: string | null;
+  grupo: { id: string; nome: string; cor: string } | null;
   _count?: { mensagens: number };
 };
 

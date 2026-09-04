@@ -22,12 +22,14 @@ export async function GET(req: Request) {
   const vendedorId = searchParams.get("vendedorId");
   const status = searchParams.get("status");
   const busca = searchParams.get("busca");
+  const grupoId = searchParams.get("grupoId");
 
   const where: Prisma.LeadWhereInput = { empresaId: ctx.empresaId };
   if (etapaId) where.etapaAtualId = etapaId;
   if (origem) where.origem = origem;
   if (vendedorId) where.vendedorId = vendedorId;
   if (status) where.status = status as StatusLead;
+  if (grupoId) where.grupoId = grupoId === "nenhum" ? null : grupoId;
   if (busca) {
     where.OR = [
       { nome: { contains: busca } },
@@ -41,6 +43,7 @@ export async function GET(req: Request) {
     include: {
       etapaAtual: true,
       vendedor: { select: { id: true, nome: true, avatarCor: true } },
+      grupo: { select: { id: true, nome: true, cor: true } },
       _count: { select: { mensagens: true } },
     },
     orderBy: { atualizadoEm: "desc" },
