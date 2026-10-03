@@ -67,14 +67,24 @@ class BaileysWorkerProvider implements WhatsAppProvider {
     const secret = process.env.WHATSAPP_WORKER_SECRET;
     if (!baseUrl || !secret) return { idExterno: "", status: "falhou" };
 
-    const res = await fetch(`${baseUrl}/sessions/${this.empresaId}/send`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-worker-secret": secret },
-      body: JSON.stringify({ telefone, texto }),
-    });
-    if (!res.ok) return { idExterno: "", status: "falhou" };
-    const data = (await res.json().catch(() => null)) as { idExterno?: string } | null;
-    return { idExterno: data?.idExterno ?? "", status: "enviado" };
+    // Worker fora do ar/inacessível (ECONNREFUSED, timeout etc.) faz fetch()
+    // lançar exceção em vez de devolver uma resposta HTTP — sem o try/catch,
+    // isso propagava e derrubava a requisição inteira com 500 (descoberto
+    // testando o handoff manual sem o worker rodando localmente), em vez de
+    // só marcar a mensagem como "falhou" como o resto do fluxo já espera.
+    try {
+      const res = await fetch(`${baseUrl}/sessions/${this.empresaId}/send`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-worker-secret": secret },
+        body: JSON.stringify({ telefone, texto }),
+      });
+      if (!res.ok) return { idExterno: "", status: "falhou" };
+      const data = (await res.json().catch(() => null)) as { idExterno?: string } | null;
+      return { idExterno: data?.idExterno ?? "", status: "enviado" };
+    } catch (err) {
+      console.error("[whatsapp:baileys-worker] falha ao conectar no worker:", err);
+      return { idExterno: "", status: "falhou" };
+    }
   }
 
   async enviarDocumento(

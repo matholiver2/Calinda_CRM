@@ -85,6 +85,9 @@ export async function POST(req: Request) {
       dataPagamento: body?.dataPagamento ? new Date(body.dataPagamento) : new Date(),
       status: rascunho ? "rascunho" : "confirmada",
       comprovantePath: body?.comprovantePath || null,
+      contratoInicioEm: body?.contratoInicioEm ? new Date(body.contratoInicioEm) : null,
+      contratoFimEm: body?.contratoFimEm ? new Date(body.contratoFimEm) : null,
+      statusContratoTexto: body?.statusContratoTexto || null,
     },
     include: {
       lead: { select: { id: true, nome: true } },

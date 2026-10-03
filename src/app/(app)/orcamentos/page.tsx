@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
-import { Plus, Download, MessageCircle, Mail, FileText, Save, Pencil } from "lucide-react";
+import { Plus, Download, MessageCircle, Mail, FileText, Save, Pencil, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Orcamento, Plano, Lead } from "@/types";
 import { ModeloBlocosEditor } from "@/components/features/orcamentos/ModeloBlocosEditor";
+import { ModeloPropostaDialog } from "@/components/features/orcamentos/ModeloPropostaDialog";
 
 function formatarMoeda(valor: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(valor);
@@ -35,6 +36,7 @@ function OrcamentosConteudo() {
   const { data } = useSWR<{ orcamentos: Orcamento[] }>("/api/orcamentos", fetcher, { refreshInterval: 15000 });
   const [criando, setCriando] = useState(!!leadIdInicial);
   const [editandoModelo, setEditandoModelo] = useState(false);
+  const [editandoModeloProposta, setEditandoModeloProposta] = useState(false);
   const [enviandoId, setEnviandoId] = useState<string | null>(null);
 
   const orcamentos = data?.orcamentos ?? [];
@@ -61,6 +63,9 @@ function OrcamentosConteudo() {
           <>
             <Button variant="secondary" onClick={() => setEditandoModelo(true)}>
               <Pencil className="h-4 w-4" /> Editar modelo
+            </Button>
+            <Button variant="secondary" onClick={() => setEditandoModeloProposta(true)}>
+              <Sparkles className="h-4 w-4" /> Modelo de proposta
             </Button>
             <Button onClick={() => setCriando(true)}>
               <Plus className="h-4 w-4" /> Novo orçamento
@@ -107,6 +112,15 @@ function OrcamentosConteudo() {
                     className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"
                   >
                     <Download className="h-4 w-4" />
+                  </a>
+                  <a
+                    href={`/api/orcamentos/${o.id}/proposta-pdf`}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Baixar proposta comercial"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"
+                  >
+                    <Sparkles className="h-4 w-4" />
                   </a>
                   <button
                     onClick={() => enviar(o.id, "whatsapp")}
@@ -166,6 +180,15 @@ function OrcamentosConteudo() {
                         >
                           <Download className="h-4 w-4" />
                         </a>
+                        <a
+                          href={`/api/orcamentos/${o.id}/proposta-pdf`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Baixar proposta comercial"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                        </a>
                         <button
                           onClick={() => enviar(o.id, "whatsapp")}
                           disabled={enviandoId === `${o.id}-whatsapp`}
@@ -195,6 +218,7 @@ function OrcamentosConteudo() {
 
       <NovoOrcamentoDialog open={criando} leadIdInicial={leadIdInicial} onClose={() => setCriando(false)} />
       <ModeloBlocosEditor open={editandoModelo} onClose={() => setEditandoModelo(false)} />
+      <ModeloPropostaDialog open={editandoModeloProposta} onClose={() => setEditandoModeloProposta(false)} />
     </div>
   );
 }

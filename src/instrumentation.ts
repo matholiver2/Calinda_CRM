@@ -16,6 +16,7 @@ declare global {
   var __calindaRespostaIaPollStarted: boolean | undefined;
   var __calindaLimpezaAssistentePollStarted: boolean | undefined;
   var __calindaFollowUpPollStarted: boolean | undefined;
+  var __calindaFollowUpAgendadoPollStarted: boolean | undefined;
 }
 
 export async function register() {
@@ -78,6 +79,17 @@ export async function register() {
       });
     }, POLL_INTERVAL_MS);
     console.log("[instrumentation] polling de follow-up de clientes ativo (a cada 5 min)");
+  }
+
+  if (!globalThis.__calindaFollowUpAgendadoPollStarted) {
+    globalThis.__calindaFollowUpAgendadoPollStarted = true;
+    const { pollFollowUpsAgendados } = await import("@/lib/followUpAgendadoService");
+    setInterval(() => {
+      pollFollowUpsAgendados().catch((err) => {
+        console.error("[instrumentation] erro no polling de follow-ups agendados:", err);
+      });
+    }, RESPOSTA_IA_POLL_INTERVAL_MS);
+    console.log("[instrumentation] polling de follow-ups agendados ativo (a cada 20s)");
   }
 
   if (!globalThis.__calindaLimpezaAssistentePollStarted) {

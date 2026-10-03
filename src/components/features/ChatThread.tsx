@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
-import { Bot, BotOff, Send, ArrowRightLeft, MessageSquareText, AlertTriangle, Clock } from "lucide-react";
+import { Bot, BotOff, Send, ArrowRightLeft, MessageSquareText, AlertTriangle, Clock, UserCheck } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Input";
 import { fetcher, apiPatch } from "@/lib/fetcher";
+import { FollowUpButton } from "@/components/features/FollowUpDialog";
 import { cn } from "@/lib/utils";
 import type { Etapa, Lead, Mensagem } from "@/types";
 import { format } from "date-fns";
@@ -21,15 +23,24 @@ export function ChatThread({ leadId, compact = false }: { leadId: string; compac
   const { data, isLoading } = useSWR<{ lead: LeadDetalhe }>(`/api/leads/${leadId}`, fetcher, {
     refreshInterval: 3000,
   });
+  const { data: etapasData } = useSWR<{ etapas: Etapa[] }>("/api/etapas", fetcher);
   const [mensagem, setMensagem] = useState("");
   const [enviando, setEnviando] = useState(false);
 
   const lead = data?.lead;
+  const etapas = etapasData?.etapas ?? [];
 
   async function alternarIa() {
     if (!lead) return;
     await apiPatch(`/api/leads/${leadId}/ia`, { iaAtiva: !lead.iaAtiva });
     mutate(`/api/leads/${leadId}`);
+  }
+
+  async function mudarEtapa(etapaId: string) {
+    if (!etapaId || !lead || etapaId === lead.etapaAtualId) return;
+    await apiPatch(`/api/leads/${leadId}/etapa`, { etapaId });
+    mutate(`/api/leads/${leadId}`);
+    mutate("/api/leads");
   }
 
   async function enviar() {
@@ -63,13 +74,38 @@ export function ChatThread({ leadId, compact = false }: { leadId: string; compac
   return (
     <Card className="flex h-full min-h-0 flex-col p-0">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
           <MessageSquareText className="h-4 w-4 shrink-0 text-fg-subtle" />
           <p className="truncate text-sm font-semibold text-fg">{lead.nome}</p>
-          <Badge color={lead.etapaAtual.cor}>{lead.etapaAtual.nome}</Badge>
+          {etapas.length > 0 ? (
+            <Select
+              value={lead.etapaAtualId}
+              onChange={(e) => mudarEtapa(e.target.value)}
+              className="!h-7 w-auto !py-0 text-xs"
+              style={{ color: lead.etapaAtual.cor, borderColor: lead.etapaAtual.cor }}
+            >
+              {etapas.map((et) => (
+                <option key={et.id} value={et.id}>
+                  {et.nome}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Badge color={lead.etapaAtual.cor}>{lead.etapaAtual.nome}</Badge>
+          )}
+          {!lead.iaAtiva && lead.humanTakeoverEm && (
+            <span
+              title={format(new Date(lead.humanTakeoverEm), "dd/MM 'às' HH:mm", { locale: ptBR })}
+              className="hidden shrink-0 items-center gap-1 rounded-full border border-border bg-surface-hover px-2 py-1 text-[10px] font-medium text-fg-subtle sm:flex"
+            >
+              <UserCheck className="h-3 w-3" /> Assumido às{" "}
+              {format(new Date(lead.humanTakeoverEm), "HH:mm", { locale: ptBR })}
+            </span>
+          )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <ContagemRespostaIa agendadoPara={lead.respostaIaAgendadaPara} />
+          <FollowUpButton leadId={leadId} />
           <button
             onClick={alternarIa}
             className={cn(

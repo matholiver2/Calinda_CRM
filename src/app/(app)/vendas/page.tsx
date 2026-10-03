@@ -230,6 +230,9 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
   const [comissaoPercentual, setComissaoPercentual] = useState<number>(venda?.comissaoPercentual ?? 50);
   const [comprovantePath, setComprovantePath] = useState<string | null>(venda?.comprovantePath ?? null);
   const [enviandoComprovante, setEnviandoComprovante] = useState(false);
+  const [contratoInicioEm, setContratoInicioEm] = useState(venda?.contratoInicioEm?.slice(0, 10) ?? "");
+  const [contratoFimEm, setContratoFimEm] = useState(venda?.contratoFimEm?.slice(0, 10) ?? "");
+  const [statusContratoTexto, setStatusContratoTexto] = useState(venda?.statusContratoTexto ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const fecharSemRascunho = useRef(false);
@@ -247,6 +250,9 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
       comissaoIntegral,
       comissaoPercentual: !comissaoIntegral ? comissaoPercentual : null,
       comprovantePath,
+      contratoInicioEm: contratoInicioEm || null,
+      contratoFimEm: contratoFimEm || null,
+      statusContratoTexto: statusContratoTexto.trim() || null,
       rascunho,
     };
   }
@@ -393,6 +399,28 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
               placeholder="% de comissão"
             />
           )}
+        </div>
+
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-fg-muted">
+            Contrato (opcional — usado pra gerar automaticamente a descrição do evento de follow-up de renovação)
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs text-fg-subtle">Início do contrato</label>
+              <Input type="date" value={contratoInicioEm} onChange={(e) => setContratoInicioEm(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs text-fg-subtle">Término do contrato</label>
+              <Input type="date" value={contratoFimEm} onChange={(e) => setContratoFimEm(e.target.value)} />
+            </div>
+          </div>
+          <Input
+            className="mt-2"
+            value={statusContratoTexto}
+            onChange={(e) => setStatusContratoTexto(e.target.value)}
+            placeholder="Status do contrato (ex: Ativo, Finalizando...)"
+          />
         </div>
 
         <div>

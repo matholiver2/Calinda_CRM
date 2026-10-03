@@ -53,6 +53,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       comissaoIntegral: body?.comissaoIntegral,
       comissaoPercentual: body?.comissaoPercentual !== undefined ? Number(body.comissaoPercentual) : undefined,
       comprovantePath: body?.comprovantePath !== undefined ? body.comprovantePath || null : undefined,
+      contratoInicioEm: body?.contratoInicioEm !== undefined ? (body.contratoInicioEm ? new Date(body.contratoInicioEm) : null) : undefined,
+      contratoFimEm: body?.contratoFimEm !== undefined ? (body.contratoFimEm ? new Date(body.contratoFimEm) : null) : undefined,
+      statusContratoTexto: body?.statusContratoTexto !== undefined ? body.statusContratoTexto || null : undefined,
       status: rascunho ? "rascunho" : "confirmada",
     },
     include: {

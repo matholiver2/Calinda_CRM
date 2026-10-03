@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import {
   requireSession,
   isSessionResponse,
@@ -7,8 +6,10 @@ import {
   isEmpresaContextResponse,
 } from "@/lib/apiAuth";
 import { leadPertenceAEmpresa } from "@/lib/tenant";
+import { montarDescricaoFollowUp } from "@/lib/reuniaoDescricao";
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+/** Gera título+descrição sugeridos pra um evento de follow-up/renovação com esse lead (ver NovaReuniaoDialog). */
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireSession();
   if (isSessionResponse(session)) return session;
   const ctx = await requireEmpresaContext(session);
@@ -19,14 +20,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ erro: "Lead não encontrado" }, { status: 404 });
   }
 
-  const body = await req.json().catch(() => null);
-  const iaAtiva = Boolean(body?.iaAtiva);
-
-  const lead = await prisma.lead.update({
-    where: { id },
-    // Reativar a IA limpa o selo de handoff manual — volta ao estado "normal".
-    data: { iaAtiva, humanTakeoverEm: iaAtiva ? null : new Date() },
-    include: { etapaAtual: true },
-  });
-  return NextResponse.json({ lead });
+  const sugestao = await montarDescricaoFollowUp(id);
+  return NextResponse.json({ sugestao });
 }

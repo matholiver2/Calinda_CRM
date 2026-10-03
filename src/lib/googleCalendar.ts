@@ -10,12 +10,14 @@ import type { Usuario, Lead } from "@prisma/client";
 const CALENDAR_BASE = "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const DURACAO_PADRAO_MIN = 60;
 
-function eventoBody(reuniao: { dataHora: Date; status: string }, lead: Lead) {
+function eventoBody(reuniao: { dataHora: Date; status: string; titulo?: string | null; descricao?: string | null }, lead: Lead) {
   const inicio = reuniao.dataHora;
   const fim = new Date(inicio.getTime() + DURACAO_PADRAO_MIN * 60_000);
   return {
-    summary: `CALINDA — ${lead.nome}`,
-    description: `Reunião com ${lead.nome} (${lead.telefone})${lead.email ? ` · ${lead.email}` : ""}\nAgendada via CALINDA.`,
+    summary: reuniao.titulo?.trim() || `CALINDA — ${lead.nome}`,
+    description:
+      reuniao.descricao?.trim() ||
+      `Reunião com ${lead.nome} (${lead.telefone})${lead.email ? ` · ${lead.email}` : ""}\nAgendada via CALINDA.`,
     start: { dateTime: inicio.toISOString() },
     end: { dateTime: fim.toISOString() },
   };
@@ -23,7 +25,7 @@ function eventoBody(reuniao: { dataHora: Date; status: string }, lead: Lead) {
 
 export async function criarEventoGoogle(
   usuario: Usuario,
-  reuniao: { dataHora: Date; status: string },
+  reuniao: { dataHora: Date; status: string; titulo?: string | null; descricao?: string | null },
   lead: Lead
 ): Promise<string | null> {
   const token = await accessTokenValido(usuario);
@@ -45,7 +47,7 @@ export async function criarEventoGoogle(
 export async function atualizarEventoGoogle(
   usuario: Usuario,
   googleEventId: string,
-  reuniao: { dataHora: Date; status: string },
+  reuniao: { dataHora: Date; status: string; titulo?: string | null; descricao?: string | null },
   lead: Lead
 ): Promise<boolean> {
   const token = await accessTokenValido(usuario);

@@ -70,7 +70,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   });
 
   if (lead.iaAtiva) {
-    await prisma.lead.update({ where: { id }, data: { iaAtiva: false } });
+    // Mensagem manual do vendedor pausa a IA automaticamente (handoff
+    // "sticky") — evita a IA responder em cima do que o vendedor acabou de
+    // escrever. Só volta a responder se alguém reativar manualmente (botão
+    // "Retomar IA" na tela da conversa).
+    await prisma.lead.update({ where: { id }, data: { iaAtiva: false, humanTakeoverEm: new Date() } });
   }
 
   const provider = await getWhatsAppProvider(lead.empresaId);

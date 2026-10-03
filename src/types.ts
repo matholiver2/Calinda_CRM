@@ -38,6 +38,8 @@ export type Lead = {
   vendedor: VendedorResumo | null;
   status: "ativo" | "cliente" | "perdido" | "remarketing" | "finalizado";
   iaAtiva: boolean;
+  humanTakeoverEm: string | null;
+  instagramSite: string | null;
   entrouEm: string;
   atualizadoEm: string;
   respostaIaAgendadaPara: string | null;
@@ -130,6 +132,9 @@ export type Venda = {
   dataPagamento: string;
   status: "rascunho" | "confirmada";
   comprovantePath: string | null;
+  contratoInicioEm: string | null;
+  contratoFimEm: string | null;
+  statusContratoTexto: string | null;
   criadoEm: string;
 };
 

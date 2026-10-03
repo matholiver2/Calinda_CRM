@@ -34,15 +34,45 @@ export type AiDecision = {
   dataHoraSugerida: string | null;
 };
 
-const GEMINI_MODEL = "gemini-3.6-flash";
+// Ordem de preferência de modelos — tenta o primeiro e, se a falha for "do
+// modelo" (sobrecarregado/indisponível: 429/500/503), tenta o próximo da
+// lista antes de desistir. Se a falha for de requisição/chave (400/401/403),
+// não adianta trocar de modelo — propaga o erro na hora (ver tentarModelos).
+const MODELOS_PREFERENCIA = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"];
+
+const STATUS_TENTAR_PROXIMO_MODELO = new Set([429, 500, 502, 503, 504]);
 
 export type GeminiContent = { role: "user" | "model"; parts: { text: string }[] };
+
+async function tentarModelos<T>(chamar: (modelo: string) => Promise<T>): Promise<T> {
+  let ultimoErro: unknown;
+  for (const modelo of MODELOS_PREFERENCIA) {
+    try {
+      return await chamar(modelo);
+    } catch (err) {
+      ultimoErro = err;
+      const status = err instanceof Error && "status" in err ? (err as { status?: number }).status : undefined;
+      if (status !== undefined && !STATUS_TENTAR_PROXIMO_MODELO.has(status)) throw err;
+      console.error(`[ai/engine] modelo ${modelo} falhou, tentando o próximo da lista:`, err);
+    }
+  }
+  throw ultimoErro;
+}
+
+class GeminiHttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
 
 /**
  * Chamada crua ao Gemini, forçando saída em JSON — compartilhada pelo motor
  * de vendas (abaixo) e pelo motor de onboarding (src/lib/ai/onboardingEngine.ts).
  * Lança erro se não houver GEMINI_API_KEY ou se a chamada falhar; quem chama
- * decide o fallback (cada motor tem o próprio simulador local).
+ * decide o fallback (cada motor tem o próprio simulador local). Tenta em
+ * cadeia os modelos de MODELOS_PREFERENCIA antes de desistir (ver tentarModelos).
  */
 export async function chamarGemini(
   systemPrompt: string,
@@ -51,28 +81,30 @@ export async function chamarGemini(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        generationConfig: { responseMimeType: "application/json" },
-      }),
+  return tentarModelos(async (modelo) => {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents,
+          generationConfig: { responseMimeType: "application/json" },
+        }),
+      }
+    );
+
+    if (!res.ok) {
+      throw new GeminiHttpError(res.status, `Gemini API (${modelo}) respondeu ${res.status}`);
     }
-  );
 
-  if (!res.ok) {
-    throw new Error(`Gemini API respondeu ${res.status}`);
-  }
-
-  const data = (await res.json()) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
-  };
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
-  return JSON.parse(text.trim());
+    const data = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    return JSON.parse(text.trim());
+  });
 }
 
 export type FerramentaDeclaracao = {
@@ -117,8 +149,11 @@ export async function chamarGeminiComFerramentas(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
 
+  // Sem fallback de modelo aqui (diferente de chamarGemini): o thoughtSignature
+  // devolvido por modelos "thinking" só é válido pro mesmo modelo que o gerou
+  // — trocar de modelo no meio de uma chamada de função quebraria o replay.
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODELOS_PREFERENCIA[0]}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },

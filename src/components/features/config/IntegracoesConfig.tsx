@@ -2,7 +2,18 @@
 
 import { useState, useEffect } from "react";
 import useSWR from "swr";
-import { MessageCircle, Sparkles, CalendarDays, CheckCircle2, CircleAlert, QrCode, LogIn } from "lucide-react";
+import {
+  MessageCircle,
+  Sparkles,
+  CalendarDays,
+  CheckCircle2,
+  CircleAlert,
+  QrCode,
+  LogIn,
+  Stethoscope,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -56,6 +67,7 @@ export function IntegracoesConfig({ podeEditar }: { podeEditar: boolean }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data && <WhatsappCard whatsapp={data.whatsapp} podeEditar={podeEditar} />}
         <GoogleCalendarCard />
+        <DiagnosticoCard />
         {itens.map((item) => (
           <Card key={item.nome} className="p-4">
             <div className="mb-3 flex items-center justify-between">
@@ -193,6 +205,68 @@ function ConectarWhatsappDialog({
         </div>
       </div>
     </Dialog>
+  );
+}
+
+type Checagem = { chave: string; label: string; ok: boolean; detalhe: string };
+
+function DiagnosticoCard() {
+  const [rodando, setRodando] = useState(false);
+  const [checagens, setChecagens] = useState<Checagem[] | null>(null);
+
+  async function testar() {
+    setRodando(true);
+    try {
+      const resultado = await fetcher<{ ok: boolean; checagens: Checagem[] }>("/api/diagnostico");
+      setChecagens(resultado.checagens);
+    } catch {
+      setChecagens(null);
+    } finally {
+      setRodando(false);
+    }
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+          <Stethoscope className="h-4.5 w-4.5" />
+        </div>
+        {checagens && (
+          <Badge color={checagens.every((c) => c.ok) ? "#10B981" : "#EF4444"}>
+            {checagens.every((c) => c.ok) ? <CheckCircle2 className="h-3 w-3" /> : <CircleAlert className="h-3 w-3" />}
+            {checagens.every((c) => c.ok) ? "Tudo certo" : "Problemas encontrados"}
+          </Badge>
+        )}
+      </div>
+      <p className="text-sm font-semibold text-fg">Diagnóstico da conexão</p>
+      <p className="mt-0.5 text-xs text-fg-subtle">Testa banco, IA e WhatsApp de uma vez</p>
+
+      {checagens && (
+        <div className="mt-3 space-y-1.5">
+          {checagens.map((c) => (
+            <div key={c.chave} className="flex items-start gap-1.5 text-xs">
+              {c.ok ? (
+                <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-success" />
+              ) : (
+                <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-danger" />
+              )}
+              <div className="min-w-0">
+                <span className="font-medium text-fg">{c.label}:</span>{" "}
+                <span className="text-fg-subtle">{c.detalhe}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-3">
+        <Button variant="secondary" size="sm" className="w-full" onClick={testar} disabled={rodando}>
+          {rodando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Stethoscope className="h-3.5 w-3.5" />}
+          {rodando ? "Testando..." : "Testar conexão"}
+        </Button>
+      </div>
+    </Card>
   );
 }
 

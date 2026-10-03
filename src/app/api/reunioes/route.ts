@@ -55,6 +55,8 @@ export async function POST(req: Request) {
       resultado: "pendente",
       linkCalendario: body?.linkCalendario ?? null,
       modalidade: body?.modalidade ?? "whatsapp",
+      titulo: body?.titulo || null,
+      descricao: body?.descricao || null,
     },
     include: { lead: true, vendedor: true },
   });

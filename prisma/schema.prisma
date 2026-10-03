@@ -86,6 +86,13 @@ enum StatusWhatsappSessao {
   conectado
 }
 
+enum StatusFollowUpAgendado {
+  pendente
+  enviado
+  cancelado
+  falhou
+}
+
 enum PeriodicidadePlano {
   mensal
   anual
@@ -133,6 +140,7 @@ model Empresa {
   pastasArquivo  PastaArquivo[]
   arquivos       Arquivo[]
   gruposCliente  GrupoCliente[]
+  followUpsAgendados FollowUpAgendado[]
 
   @@map("empresas")
 }
@@ -175,6 +183,7 @@ model Usuario {
   convitesEnviados  Convite[]        @relation("ConvidadoPor")
   orcamentosCriados Orcamento[]
   vendas            Venda[]
+  followUpsAgendadosCriados FollowUpAgendado[]
 
   @@map("usuarios")
 }
@@ -245,6 +254,13 @@ model Lead {
   vendedor     Usuario?   @relation("VendedorLeads", fields: [vendedorId], references: [id])
   status       StatusLead @default(ativo)
   iaAtiva      Boolean    @default(true) @map("ia_ativa")
+  // Marcado quando um vendedor manda uma mensagem manual enquanto a IA
+  // estava ativa (ver POST /api/leads/[id]/mensagens) — a IA já fica
+  // pausada via iaAtiva=false nesse momento, esse campo é só pra exibir
+  // "assumido manualmente às HH:mm" na tela da conversa. Reativar a IA
+  // (iaAtiva=true de novo) limpa esse campo.
+  humanTakeoverEm DateTime? @map("human_takeover_em")
+  instagramSite String?    @map("instagram_site")
   observacoes  String?    @db.Text
   grupoId      String?    @map("grupo_id")
   grupo        GrupoCliente? @relation(fields: [grupoId], references: [id], onDelete: SetNull)
@@ -268,6 +284,7 @@ model Lead {
   vendas        Venda[]
   notificacoes  Notificacao[]
   pastasArquivo PastaArquivo[]
+  followUpsAgendados FollowUpAgendado[]
 
   @@unique([empresaId, telefone])
   @@map("leads")
@@ -331,6 +348,12 @@ model Reuniao {
   linkCalendario String?          @map("link_calendario")
   googleEventId  String?          @map("google_event_id")
   modalidade     ModalidadeReuniao @default(whatsapp)
+  titulo         String?          @db.Text
+  // Descrição do evento no Google Calendar — se nula, usa o texto padrão
+  // (ver eventoBody em googleCalendar.ts). Preenchida automaticamente a
+  // partir dos dados de contrato do cliente (Lead/Venda) quando a reunião
+  // é criada como "follow-up de renovação" (ver reuniaoDescricao.ts).
+  descricao      String?          @db.Text
   lembrete1hEnviado      Boolean  @default(false) @map("lembrete_1h_enviado")
   lembrete15minEnviado   Boolean  @default(false) @map("lembrete_15min_enviado")
   lembreteInicioEnviado  Boolean  @default(false) @map("lembrete_inicio_enviado")
@@ -430,6 +453,13 @@ model Venda {
   dataPagamento      DateTime       @default(now()) @map("data_pagamento")
   status             StatusVenda    @default(confirmada)
   comprovantePath    String?        @map("comprovante_path")
+  // Datas de vigência do contrato — usadas pra montar automaticamente a
+  // descrição do evento de reunião de follow-up/renovação (ver
+  // src/lib/reuniaoDescricao.ts). Opcionais: vendas avulsas sem contrato
+  // formal não precisam preencher.
+  contratoInicioEm    DateTime?     @map("contrato_inicio_em")
+  contratoFimEm       DateTime?     @map("contrato_fim_em")
+  statusContratoTexto String?       @map("status_contrato_texto")
   criadoEm           DateTime       @default(now()) @map("criado_em")
 
   @@map("vendas")
@@ -451,6 +481,31 @@ model AssistenteMensagem {
   criadoEm  DateTime @default(now()) @map("criado_em")
 
   @@map("assistente_mensagens")
+}
+
+// Follow-up manual agendado pontualmente a partir da conversa de um lead
+// (presets "em 1h/3h/amanhã" ou data customizada) — diferente do follow-up
+// periódico automático (followUpService.ts::pollFollowUpClientes, que roda
+// por intervalo configurado pra todo cliente). Processado por
+// pollFollowUpsAgendados (mesmo mecanismo de cron/tick).
+model FollowUpAgendado {
+  id        String                  @id @default(uuid())
+  empresaId String                  @map("empresa_id")
+  empresa   Empresa                 @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  leadId    String                  @map("lead_id")
+  lead      Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  enviarEm  DateTime                @map("enviar_em")
+  enviadoEm DateTime?               @map("enviado_em")
+  status    StatusFollowUpAgendado  @default(pendente)
+  // Se preenchido, enviado ao pé da letra; se vazio, a IA escreve a mensagem
+  // de reengajamento na hora do envio (mesmo padrão de resolverTextoConfiguravel).
+  textoPersonalizado String?        @db.Text @map("texto_personalizado")
+  criadoPorId String?               @map("criado_por_id")
+  criadoPor   Usuario?              @relation(fields: [criadoPorId], references: [id])
+  erro        String?               @db.Text
+  criadoEm    DateTime              @default(now()) @map("criado_em")
+
+  @@map("follow_ups_agendados")
 }
 
 model Notificacao {

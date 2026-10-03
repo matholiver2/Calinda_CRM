@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Save, Video, MessageCircle, ExternalLink } from "lucide-react";
+import { Save, Video, MessageCircle, ExternalLink, FileClock } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { Select, Input } from "@/components/ui/Input";
+import { Select, Input, Textarea } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { fetcher, apiPost, ApiError } from "@/lib/fetcher";
 import type { Lead, VendedorResumo } from "@/types";
@@ -43,6 +43,28 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const [followUpRenovacao, setFollowUpRenovacao] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [carregandoSugestao, setCarregandoSugestao] = useState(false);
+
+  async function alternarFollowUpRenovacao(ativo: boolean) {
+    setFollowUpRenovacao(ativo);
+    if (!ativo || !leadId) return;
+    setCarregandoSugestao(true);
+    try {
+      const { sugestao } = await fetcher<{ sugestao: { titulo: string; descricao: string } | null }>(
+        `/api/leads/${leadId}/descricao-reuniao`
+      );
+      if (sugestao) {
+        setTitulo(sugestao.titulo);
+        setDescricao(sugestao.descricao);
+      }
+    } finally {
+      setCarregandoSugestao(false);
+    }
+  }
+
   async function salvar(e: React.FormEvent) {
     e.preventDefault();
     setErro(null);
@@ -58,6 +80,8 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
         dataHora: new Date(dataHora).toISOString(),
         modalidade,
         linkCalendario: modalidade === "google_meet" ? meetLink || null : null,
+        titulo: titulo.trim() || undefined,
+        descricao: descricao.trim() || undefined,
       });
       onSalvo();
       onClose();
@@ -142,6 +166,32 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
               Nenhum link de Meet configurado ainda — defina em Configurações → Agenda.
             </p>
           ))}
+      </div>
+
+      <div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-fg">
+          <input
+            type="checkbox"
+            checked={followUpRenovacao}
+            onChange={(e) => alternarFollowUpRenovacao(e.target.checked)}
+            disabled={!leadId}
+          />
+          <FileClock className="h-3.5 w-3.5 text-fg-muted" />
+          Follow-up de renovação (preenche título/descrição com os dados de contrato do cliente)
+        </label>
+        {carregandoSugestao && <p className="mt-1 text-xs text-fg-subtle">Buscando dados do cliente...</p>}
+        {followUpRenovacao && (
+          <div className="mt-2 space-y-2">
+            <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder="Título do evento" />
+            <Textarea
+              rows={6}
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Descrição do evento"
+              className="font-mono text-xs"
+            />
+          </div>
+        )}
       </div>
 
       {erro && <p className="text-sm text-danger">{erro}</p>}
