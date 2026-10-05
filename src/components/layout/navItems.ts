@@ -12,6 +12,7 @@ import {
   FolderOpen,
   Sparkles,
   Target,
+  Megaphone,
 } from "lucide-react";
 
 export const TABS = [
@@ -31,4 +32,5 @@ export const GROUP_B = [
   { href: "/arquivos", label: "Arquivos", icon: FolderOpen },
   { href: "/remarketing", label: "Remarketing", icon: Repeat2 },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
+  { href: "/novidades", label: "Novidades", icon: Megaphone },
 ];

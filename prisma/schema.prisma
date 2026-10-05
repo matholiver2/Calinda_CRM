@@ -164,6 +164,11 @@ model Usuario {
   avatarCor String   @default("#DC2626") @map("avatar_cor")
   avatarUrl String?  @db.Text @map("avatar_url")
   onboardingPessoalConcluido Boolean @default(false) @map("onboarding_pessoal_concluido")
+  // Data/hora em que a pessoa viu pela última vez a tela de novidades (ver
+  // src/lib/changelog.ts) — null significa "nunca viu". Comparado contra a
+  // data da entrada mais recente do changelog pra decidir se mostra o popup
+  // automático ao entrar.
+  changelogVistoEm DateTime? @map("changelog_visto_em")
   criadoEm  DateTime @default(now()) @map("criado_em")
 
   membrosEmpresa MembroEmpresa[]

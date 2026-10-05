@@ -1,5 +1,6 @@
 import { TopNavbar } from "@/components/layout/TopNavbar";
 import { IconRail } from "@/components/layout/IconRail";
+import { ChangelogPopup } from "@/components/features/ChangelogPopup";
 import type { SessionPayload } from "@/lib/auth";
 
 /**
@@ -22,6 +23,7 @@ export function AppLayout({
 }) {
   return (
     <div className="flex h-screen w-full items-center justify-center bg-bg">
+      <ChangelogPopup />
       <div className="flex h-screen w-full flex-col md:h-[96vh] md:w-[97.5vw] md:max-w-[1760px]">
         <TopNavbar usuario={usuario} />
         <div className="flex flex-1 gap-2 overflow-hidden">
