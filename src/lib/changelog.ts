@@ -13,6 +13,13 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-05",
+    titulo: "Exportar relatórios em PDF",
+    itens: [
+      "Na tela Relatórios, novo botão \"Exportar PDF\" — escolha quais seções entram (conversão por etapa, tempo médio, performance por vendedor, origem dos leads) e gere um PDF com a identidade visual do CALINDA.",
+    ],
+  },
+  {
+    data: "2026-10-05",
     titulo: "Régua de relacionamento e follow-up completo",
     itens: [
       "Novo sistema de régua de relacionamento (tela Follow-up): defina tipos de follow-up (mensagem, relatório, ligação, visita, renovação...) com script/roteiro próprio, e monte uma régua de marcos por dia de contrato — diferente por perfil de cliente (A/B/C) e periodicidade (trimestral/semestral/anual).",

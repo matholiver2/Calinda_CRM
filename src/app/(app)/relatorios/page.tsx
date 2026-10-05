@@ -1,9 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import useSWR from "swr";
 import { BarChart, Bar, Cell, ResponsiveContainer } from "recharts";
-import { TrendingUp, Percent, Clock, Users, ArrowUpRight, Calendar } from "lucide-react";
+import { TrendingUp, Percent, Clock, Users, ArrowUpRight, Calendar, Download } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { Button } from "@/components/ui/Button";
+import { Dialog } from "@/components/ui/Dialog";
 import { fetcher } from "@/lib/fetcher";
 import { CARD, CARD_LG } from "@/lib/utils";
 
@@ -24,6 +27,7 @@ type Relatorio = {
 
 export default function RelatoriosPage() {
   const { data, isLoading } = useSWR<Relatorio>("/api/relatorios/conversao", fetcher);
+  const [exportando, setExportando] = useState(false);
 
   if (isLoading || !data) {
     return <div className="py-20 text-center text-sm text-fg-subtle">Carregando relatórios...</div>;
@@ -53,8 +57,13 @@ export default function RelatoriosPage() {
             <Calendar className="h-4 w-4 text-fg-subtle" />
             29 Jun, 2025 - 29 Ago, 2025
           </button>
+          <Button size="sm" onClick={() => setExportando(true)}>
+            <Download className="h-3.5 w-3.5" /> Exportar PDF
+          </Button>
         </div>
       </div>
+
+      <ExportarRelatorioDialog open={exportando} onClose={() => setExportando(false)} />
 
       {/* Row 1: stat cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -243,5 +252,71 @@ function StatCard({
       <p className="mb-1 text-xs text-fg-subtle">{label}</p>
       <p className="text-2xl font-bold text-fg">{value}</p>
     </div>
+  );
+}
+
+const SECOES_DISPONIVEIS: { id: string; label: string }[] = [
+  { id: "conversao", label: "Conversão por Etapa" },
+  { id: "tempo", label: "Tempo Médio por Etapa" },
+  { id: "performance", label: "Performance por Vendedor" },
+  { id: "origem", label: "Origem dos Leads" },
+];
+
+function ExportarRelatorioDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [selecionadas, setSelecionadas] = useState<string[]>(SECOES_DISPONIVEIS.map((s) => s.id));
+  const [gerando, setGerando] = useState(false);
+
+  function alternar(id: string) {
+    setSelecionadas((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+  }
+
+  async function gerar() {
+    if (selecionadas.length === 0) return;
+    setGerando(true);
+    // Abre a aba já no clique (síncrono) — esperar o fetch terminar antes de
+    // chamar window.open faria o navegador bloquear como popup não solicitado.
+    const aba = window.open("", "_blank");
+    try {
+      const res = await fetch("/api/relatorios/conversao/pdf", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ secoes: selecionadas }),
+      });
+      if (!res.ok) throw new Error("Erro ao gerar PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (aba) aba.location.href = url;
+      else window.open(url, "_blank");
+      onClose();
+    } catch {
+      aba?.close();
+      alert("Erro ao gerar o PDF do relatório");
+    } finally {
+      setGerando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Exportar relatório em PDF">
+      <div className="space-y-4">
+        <p className="text-sm text-fg-subtle">Escolha o que entra no PDF (os cards de resumo sempre aparecem no topo).</p>
+        <div className="space-y-2">
+          {SECOES_DISPONIVEIS.map((s) => (
+            <label key={s.id} className="flex cursor-pointer items-center gap-2.5 rounded-[10px] border border-border px-3.5 py-2.5 text-sm text-fg hover:bg-surface-hover">
+              <input type="checkbox" checked={selecionadas.includes(s.id)} onChange={() => alternar(s.id)} />
+              {s.label}
+            </label>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button onClick={gerar} loading={gerando} disabled={selecionadas.length === 0}>
+            <Download className="h-3.5 w-3.5" /> Gerar PDF
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
