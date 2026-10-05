@@ -20,7 +20,7 @@ export function TopNavbar({ usuario }: { usuario: SessionPayload }) {
       <div className="flex items-center gap-2 md:gap-2.5">
         <MobileNavDrawer />
         <Logo size="sm" />
-        <LogoEscrita heightClassName="h-5" className="hidden sm:inline-block" />
+        <LogoEscrita heightClassName="h-10" className="hidden sm:inline-block" />
       </div>
 
       <nav className="hidden h-9 items-center gap-1 rounded-full bg-bg px-1.5 md:flex">

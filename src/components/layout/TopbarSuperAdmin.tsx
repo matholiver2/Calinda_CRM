@@ -20,7 +20,7 @@ export function TopbarSuperAdmin({ usuario }: { usuario: SessionPayload }) {
     <header className="flex items-center justify-between border-b border-border bg-bg-elevated px-6 py-4 lg:px-8">
       <div className="flex items-center gap-2.5">
         <Logo size="sm" />
-        <LogoEscrita heightClassName="h-5" />
+        <LogoEscrita heightClassName="h-10" />
         <span className="ml-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
           Super Admin
         </span>
