@@ -56,6 +56,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       contratoInicioEm: body?.contratoInicioEm !== undefined ? (body.contratoInicioEm ? new Date(body.contratoInicioEm) : null) : undefined,
       contratoFimEm: body?.contratoFimEm !== undefined ? (body.contratoFimEm ? new Date(body.contratoFimEm) : null) : undefined,
       statusContratoTexto: body?.statusContratoTexto !== undefined ? body.statusContratoTexto || null : undefined,
+      periodicidadeContrato:
+        body?.periodicidadeContrato !== undefined
+          ? (["trimestral", "semestral", "anual"].includes(body.periodicidadeContrato) ? body.periodicidadeContrato : null)
+          : undefined,
       status: rascunho ? "rascunho" : "confirmada",
     },
     include: {

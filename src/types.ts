@@ -40,6 +40,7 @@ export type Lead = {
   iaAtiva: boolean;
   humanTakeoverEm: string | null;
   instagramSite: string | null;
+  perfilFollowUp: "a" | "b" | "c" | null;
   entrouEm: string;
   atualizadoEm: string;
   respostaIaAgendadaPara: string | null;
@@ -135,6 +136,7 @@ export type Venda = {
   contratoInicioEm: string | null;
   contratoFimEm: string | null;
   statusContratoTexto: string | null;
+  periodicidadeContrato: "trimestral" | "semestral" | "anual" | null;
   criadoEm: string;
 };
 

@@ -233,6 +233,7 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
   const [contratoInicioEm, setContratoInicioEm] = useState(venda?.contratoInicioEm?.slice(0, 10) ?? "");
   const [contratoFimEm, setContratoFimEm] = useState(venda?.contratoFimEm?.slice(0, 10) ?? "");
   const [statusContratoTexto, setStatusContratoTexto] = useState(venda?.statusContratoTexto ?? "");
+  const [periodicidadeContrato, setPeriodicidadeContrato] = useState(venda?.periodicidadeContrato ?? "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
   const fecharSemRascunho = useRef(false);
@@ -253,6 +254,7 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
       contratoInicioEm: contratoInicioEm || null,
       contratoFimEm: contratoFimEm || null,
       statusContratoTexto: statusContratoTexto.trim() || null,
+      periodicidadeContrato: periodicidadeContrato || null,
       rascunho,
     };
   }
@@ -408,7 +410,7 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
 
         <div>
           <p className="mb-1.5 text-xs font-medium text-fg-muted">
-            Contrato (opcional — usado pra gerar automaticamente a descrição do evento de follow-up de renovação)
+            Contrato (opcional — usado pra gerar a descrição de reuniões de renovação e pra régua de follow-up)
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
@@ -419,6 +421,15 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
               <label className="mb-1.5 block text-xs text-fg-subtle">Término do contrato</label>
               <Input type="date" value={contratoFimEm} onChange={(e) => setContratoFimEm(e.target.value)} />
             </div>
+          </div>
+          <div className="mt-2">
+            <label className="mb-1.5 block text-xs text-fg-subtle">Periodicidade do contrato</label>
+            <Select value={periodicidadeContrato} onChange={(e) => setPeriodicidadeContrato(e.target.value as typeof periodicidadeContrato)}>
+              <option value="">Não informado</option>
+              <option value="trimestral">Trimestral</option>
+              <option value="semestral">Semestral</option>
+              <option value="anual">Anual</option>
+            </Select>
           </div>
           <Input
             className="mt-2"

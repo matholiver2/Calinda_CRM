@@ -88,6 +88,9 @@ export async function POST(req: Request) {
       contratoInicioEm: body?.contratoInicioEm ? new Date(body.contratoInicioEm) : null,
       contratoFimEm: body?.contratoFimEm ? new Date(body.contratoFimEm) : null,
       statusContratoTexto: body?.statusContratoTexto || null,
+      periodicidadeContrato: ["trimestral", "semestral", "anual"].includes(body?.periodicidadeContrato)
+        ? body.periodicidadeContrato
+        : null,
     },
     include: {
       lead: { select: { id: true, nome: true } },

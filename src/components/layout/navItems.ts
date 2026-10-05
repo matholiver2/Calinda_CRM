@@ -13,6 +13,7 @@ import {
   Sparkles,
   Target,
   Megaphone,
+  CalendarClock,
 } from "lucide-react";
 
 export const TABS = [
@@ -28,6 +29,7 @@ export const GROUP_B = [
   { href: "/assistente", label: "Assistente", icon: Sparkles },
   { href: "/prospeccao", label: "Prospecção", icon: Target },
   { href: "/clientes", label: "Clientes", icon: UserCheck },
+  { href: "/follow-up", label: "Follow-up", icon: CalendarClock },
   { href: "/orcamentos", label: "Orçamentos", icon: FileText },
   { href: "/arquivos", label: "Arquivos", icon: FolderOpen },
   { href: "/remarketing", label: "Remarketing", icon: Repeat2 },

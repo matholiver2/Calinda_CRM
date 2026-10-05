@@ -17,6 +17,7 @@ declare global {
   var __calindaLimpezaAssistentePollStarted: boolean | undefined;
   var __calindaFollowUpPollStarted: boolean | undefined;
   var __calindaFollowUpAgendadoPollStarted: boolean | undefined;
+  var __calindaReguaFollowUpPollStarted: boolean | undefined;
 }
 
 export async function register() {
@@ -90,6 +91,17 @@ export async function register() {
       });
     }, RESPOSTA_IA_POLL_INTERVAL_MS);
     console.log("[instrumentation] polling de follow-ups agendados ativo (a cada 20s)");
+  }
+
+  if (!globalThis.__calindaReguaFollowUpPollStarted) {
+    globalThis.__calindaReguaFollowUpPollStarted = true;
+    const { pollReguaFollowUp } = await import("@/lib/reguaFollowUpService");
+    setInterval(() => {
+      pollReguaFollowUp().catch((err) => {
+        console.error("[instrumentation] erro no polling da régua de follow-up:", err);
+      });
+    }, POLL_INTERVAL_MS);
+    console.log("[instrumentation] polling da régua de follow-up ativo (a cada 5 min)");
   }
 
   if (!globalThis.__calindaLimpezaAssistentePollStarted) {

@@ -138,6 +138,8 @@ export default function LeadDetalhePage({ params }: { params: Promise<{ id: stri
 
           <InstagramSiteCard leadId={id} valorInicial={lead.instagramSite} />
 
+          <PerfilFollowUpCard leadId={id} valorInicial={lead.perfilFollowUp} />
+
           <ObservacoesCard leadId={id} observacoesIniciais={lead.observacoes} />
 
           <Card className="p-5">
@@ -232,6 +234,45 @@ function InstagramSiteCard({ leadId, valorInicial }: { leadId: string; valorInic
           <Save className="h-3.5 w-3.5" />
         </Button>
       </div>
+    </Card>
+  );
+}
+
+const PERFIL_LABEL: Record<"a" | "b" | "c", string> = {
+  a: "A — Estratégico (alta proximidade)",
+  b: "B — Intermediário",
+  c: "C — Operacional (cadência simplificada)",
+};
+
+function PerfilFollowUpCard({ leadId, valorInicial }: { leadId: string; valorInicial: "a" | "b" | "c" | null }) {
+  const [perfil, setPerfil] = useState(valorInicial ?? "");
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar(novoPerfil: string) {
+    setPerfil(novoPerfil);
+    setSalvando(true);
+    try {
+      await apiPatch(`/api/leads/${leadId}`, { perfilFollowUp: novoPerfil || null });
+      mutate(`/api/leads/${leadId}`);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <h2 className="mb-1 text-sm font-semibold text-fg">Perfil de follow-up</h2>
+      <p className="mb-3 text-xs text-fg-subtle">
+        Define a régua de relacionamento que esse cliente segue (ver Configurações → Follow-up).
+      </p>
+      <Select value={perfil} onChange={(e) => salvar(e.target.value)} disabled={salvando}>
+        <option value="">Sem classificação (fora da régua)</option>
+        {(Object.entries(PERFIL_LABEL) as [string, string][]).map(([valor, label]) => (
+          <option key={valor} value={valor}>
+            {label}
+          </option>
+        ))}
+      </Select>
     </Card>
   );
 }

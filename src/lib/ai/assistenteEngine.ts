@@ -8,6 +8,7 @@
 
 import { chamarGeminiComFerramentas, type GeminiContent, type GeminiConteudoCru } from "@/lib/ai/engine";
 import { FERRAMENTAS_ASSISTENTE, executarFerramentaAssistente } from "@/lib/assistenteFerramentas";
+import { prisma } from "@/lib/db";
 
 export type TurnoAssistente = { autor: "assistente" | "usuario"; texto: string };
 
@@ -19,7 +20,7 @@ export type ContextoAssistente = {
   empresaId: string;
 };
 
-function montarSystemPrompt(ctx: ContextoAssistente): string {
+async function montarSystemPrompt(ctx: ContextoAssistente): Promise<string> {
   const agoraFormatado = new Date().toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
     weekday: "long",
@@ -29,6 +30,17 @@ function montarSystemPrompt(ctx: ContextoAssistente): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  const tipos = await prisma.tipoFollowUp.findMany({
+    where: { empresaId: ctx.empresaId, ativo: true },
+    select: { nome: true, objetivo: true, canal: true },
+  });
+  const blocoFollowUp =
+    tipos.length > 0
+      ? `\nA empresa tem um sistema de régua de relacionamento/follow-up configurado, com estes tipos cadastrados (cada um tem um script/roteiro próprio salvo no sistema — se a pessoa pedir um desses tipos, sugira o conteúdo com base no objetivo dele, mas lembre que o texto exato está em Follow-up → Tipos de Follow-up):\n${tipos
+          .map((t) => `- ${t.nome} (${t.canal === "automatico" ? "automático, por WhatsApp" : "manual — ligação/visita"})${t.objetivo ? `: ${t.objetivo}` : ""}`)
+          .join("\n")}\nVocê pode usar a ferramenta consultar_regua_followup pra ver o que está pendente/devido pra um cliente específico (perfil A/B/C, dias de contrato, próximo marco).`
+      : `\nA empresa ainda não configurou tipos de follow-up/régua de relacionamento (tela Follow-up) — se a pessoa perguntar sobre follow-up, pode sugerir que configure lá, e ajudar a redigir mensagens de acompanhamento genéricas no meio tempo.`;
 
   return `Você é o Assistente de Vendas do CALINDA, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
 
@@ -40,6 +52,7 @@ Agora é ${agoraFormatado} (horário de São Paulo/Brasil) — use isso pra reso
 Sua função é ajudar ${ctx.usuarioNome} a vender melhor: sugerir como responder um lead difícil, ajudar a montar uma proposta ou argumento de venda, revisar uma mensagem antes de enviar, dar dicas de follow-up, ajudar a priorizar quais leads atacar primeiro, esclarecer dúvidas sobre o processo comercial da empresa. Não é um assistente genérico — mantenha o foco em vendas e no dia a dia comercial dessa empresa.
 
 Você também tem acesso a uma ferramenta pra agendar reuniões de verdade no sistema (agendar_reuniao) — use ela sempre que a pessoa pedir explicitamente pra marcar/agendar uma reunião com um lead/cliente específico. Se faltar o nome da pessoa ou a data/hora, pergunte antes de chamar a ferramenta em vez de inventar. Depois que a ferramenta rodar, você recebe o resultado e deve confirmar pra pessoa em linguagem natural o que aconteceu (ou o problema, se não deu certo).
+${blocoFollowUp}
 
 Pra qualquer outro assunto, responda normalmente em texto.
 
@@ -56,7 +69,7 @@ export async function gerarRespostaAssistente(
       parts: [{ text: t.texto }],
     }));
 
-    const systemPrompt = montarSystemPrompt(contexto);
+    const systemPrompt = await montarSystemPrompt(contexto);
     const primeira = await chamarGeminiComFerramentas(systemPrompt, contents, FERRAMENTAS_ASSISTENTE);
 
     if (primeira.tipo === "texto") return primeira.texto;

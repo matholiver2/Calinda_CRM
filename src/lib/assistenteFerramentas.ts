@@ -41,6 +41,21 @@ export const FERRAMENTAS_ASSISTENTE: FerramentaDeclaracao[] = [
       required: ["nome_lead", "data_hora_iso"],
     },
   },
+  {
+    name: "consultar_regua_followup",
+    description:
+      "Consulta o perfil de follow-up (A/B/C), o contrato e qual o próximo marco da régua de relacionamento devido ou pendente pra um cliente específico. Use quando a pessoa perguntar algo como 'qual o próximo follow-up do cliente X' ou 'o que eu devo fazer com o cliente Y agora'.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        nome_lead: {
+          type: "STRING",
+          description: "Nome (ou parte do nome) do lead/cliente cadastrado no CRM.",
+        },
+      },
+      required: ["nome_lead"],
+    },
+  },
 ];
 
 type ContextoFerramenta = { empresaId: string; usuarioId: string };
@@ -51,7 +66,64 @@ export async function executarFerramentaAssistente(
   ctx: ContextoFerramenta
 ): Promise<string> {
   if (nome === "agendar_reuniao") return executarAgendarReuniao(argumentos, ctx);
+  if (nome === "consultar_regua_followup") return executarConsultarReguaFollowup(argumentos, ctx);
   return `Ferramenta desconhecida: ${nome}.`;
+}
+
+const PERFIL_LABEL: Record<string, string> = { a: "A (estratégico)", b: "B (intermediário)", c: "C (operacional)" };
+
+async function executarConsultarReguaFollowup(argumentos: Record<string, unknown>, ctx: ContextoFerramenta): Promise<string> {
+  const nomeLead = typeof argumentos.nome_lead === "string" ? argumentos.nome_lead.trim() : "";
+  if (!nomeLead) return "Faltou o nome do lead/cliente.";
+
+  const candidatos = await prisma.lead.findMany({
+    where: { empresaId: ctx.empresaId, nome: { contains: nomeLead, mode: "insensitive" } },
+    select: { id: true, nome: true, perfilFollowUp: true },
+    take: 5,
+  });
+  if (candidatos.length === 0) return `Não encontrei nenhum lead/cliente com o nome "${nomeLead}".`;
+  if (candidatos.length > 1) {
+    return `Encontrei mais de um parecido com "${nomeLead}": ${candidatos.map((c) => c.nome).join(", ")}. Pergunte qual deles é.`;
+  }
+
+  const lead = candidatos[0];
+  if (!lead.perfilFollowUp) {
+    return `${lead.nome} ainda não tem um perfil de follow-up classificado (A/B/C) — defina na tela do cliente antes de entrar na régua automática.`;
+  }
+
+  const venda = await prisma.venda.findFirst({
+    where: { leadId: lead.id, status: "confirmada", contratoInicioEm: { not: null }, periodicidadeContrato: { not: null } },
+    orderBy: { contratoInicioEm: "desc" },
+  });
+  if (!venda?.contratoInicioEm || !venda.periodicidadeContrato) {
+    return `${lead.nome} tem perfil ${PERFIL_LABEL[lead.perfilFollowUp]}, mas nenhuma venda com data de início e periodicidade de contrato cadastradas — sem isso não dá pra calcular a régua.`;
+  }
+
+  const diasDesdeInicio = Math.floor((Date.now() - venda.contratoInicioEm.getTime()) / 86_400_000);
+  const reguas = await prisma.reguaFollowUp.findMany({
+    where: { empresaId: ctx.empresaId, perfil: lead.perfilFollowUp, periodicidade: venda.periodicidadeContrato },
+    orderBy: { diaOffset: "asc" },
+    include: { tipoFollowUp: { select: { nome: true, canal: true } } },
+  });
+  if (reguas.length === 0) {
+    return `${lead.nome} tem perfil ${PERFIL_LABEL[lead.perfilFollowUp]} e contrato ${venda.periodicidadeContrato}, mas essa combinação não tem marcos configurados na régua ainda.`;
+  }
+
+  const envios = await prisma.followUpReguaEnvio.findMany({ where: { leadId: lead.id, reguaId: { in: reguas.map((r) => r.id) } } });
+  const executadosIds = new Set(envios.map((e) => e.reguaId));
+
+  const proximoPendente = reguas.find((r) => !executadosIds.has(r.id) && r.diaOffset <= diasDesdeInicio);
+  const proximoFuturo = reguas.find((r) => !executadosIds.has(r.id) && r.diaOffset > diasDesdeInicio);
+
+  let resultado = `${lead.nome} — perfil ${PERFIL_LABEL[lead.perfilFollowUp]}, contrato ${venda.periodicidadeContrato}, dia ${diasDesdeInicio} desde o início.`;
+  if (proximoPendente) {
+    resultado += ` Follow-up pendente (devido no dia ${proximoPendente.diaOffset}, ainda não executado): "${proximoPendente.tipoFollowUp.nome}" (${proximoPendente.tipoFollowUp.canal === "automatico" ? "automático" : "manual"}).`;
+  } else if (proximoFuturo) {
+    resultado += ` Nenhum pendente agora — próximo marco é "${proximoFuturo.tipoFollowUp.nome}" no dia ${proximoFuturo.diaOffset} (faltam ${proximoFuturo.diaOffset - diasDesdeInicio} dias).`;
+  } else {
+    resultado += ` Todos os marcos da régua pra esse ciclo já foram executados.`;
+  }
+  return resultado;
 }
 
 async function executarAgendarReuniao(
@@ -117,7 +189,7 @@ async function executarAgendarReuniao(
   // Awaited: a resposta pro usuário do Assistente precisa dizer se saiu um
   // Google Meet de verdade ou se caiu pra WhatsApp, não dá pra responder
   // isso sem esperar a sincronização terminar.
-  let linkFinal = await sincronizarReuniaoComGoogle(reuniao.id);
+  const linkFinal = await sincronizarReuniaoComGoogle(reuniao.id);
   if (!linkFinal) {
     await prisma.reuniao.update({ where: { id: reuniao.id }, data: { modalidade: "whatsapp" } });
   }

@@ -94,6 +94,32 @@ enum StatusFollowUpAgendado {
   falhou
 }
 
+// Classificação do cliente pra régua de relacionamento (ver model
+// ReguaFollowUp) — quanto mais estratégico, mais frequente/próximo o
+// acompanhamento. Nomeado "a/b/c" (não "estrategico/intermediario/...")
+// porque o conceito é genérico pra qualquer área, só a cadência muda.
+enum PerfilCliente {
+  a
+  b
+  c
+}
+
+// Periodicidade do contrato — referência pra calcular em que dia da régua o
+// cliente está (ver Venda.periodicidadeContrato e ReguaFollowUp.diaOffset).
+enum PeriodicidadeContrato {
+  trimestral
+  semestral
+  anual
+}
+
+// Cada marco de follow-up pode ser automático (CALINDA manda a mensagem
+// sozinho, por WhatsApp) ou manual (não dá pra automatizar uma ligação ou
+// visita de verdade — o sistema só lembra o vendedor e mostra o roteiro).
+enum CanalTipoFollowUp {
+  automatico
+  manual
+}
+
 enum PeriodicidadePlano {
   mensal
   anual
@@ -142,6 +168,8 @@ model Empresa {
   arquivos       Arquivo[]
   gruposCliente  GrupoCliente[]
   followUpsAgendados FollowUpAgendado[]
+  tiposFollowUp  TipoFollowUp[]
+  reguasFollowUp ReguaFollowUp[]
 
   @@map("empresas")
 }
@@ -270,6 +298,11 @@ model Lead {
   observacoes  String?    @db.Text
   grupoId      String?    @map("grupo_id")
   grupo        GrupoCliente? @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+  // Classificação pra régua de relacionamento (ver ReguaFollowUp) — null até
+  // o vendedor classificar manualmente na tela do cliente; sem perfil, o
+  // cliente não entra na régua automática (fica só no follow-up simples por
+  // intervalo fixo que já existia, ver followUpService.ts).
+  perfilFollowUp PerfilCliente? @map("perfil_follow_up")
   entrouEm     DateTime   @default(now()) @map("entrou_em")
   atualizadoEm DateTime   @updatedAt @map("atualizado_em")
 
@@ -291,6 +324,7 @@ model Lead {
   notificacoes  Notificacao[]
   pastasArquivo PastaArquivo[]
   followUpsAgendados FollowUpAgendado[]
+  reguaFollowUpEnvios FollowUpReguaEnvio[]
 
   @@unique([empresaId, telefone])
   @@map("leads")
@@ -474,6 +508,10 @@ model Venda {
   contratoInicioEm    DateTime?     @map("contrato_inicio_em")
   contratoFimEm       DateTime?     @map("contrato_fim_em")
   statusContratoTexto String?       @map("status_contrato_texto")
+  // Referência pra régua de relacionamento (ver ReguaFollowUp) — junto com
+  // Lead.perfilFollowUp e contratoInicioEm, decide em que dia da régua o
+  // cliente está e qual tipo de follow-up é devido.
+  periodicidadeContrato PeriodicidadeContrato? @map("periodicidade_contrato")
   criadoEm           DateTime       @default(now()) @map("criado_em")
 
   @@map("vendas")
@@ -520,6 +558,72 @@ model FollowUpAgendado {
   criadoEm    DateTime              @default(now()) @map("criado_em")
 
   @@map("follow_ups_agendados")
+}
+
+// Um "tipo" de follow-up da régua de relacionamento — ex: "Mensagem de
+// acompanhamento", "Ligação estratégica", "Visita presencial". Cada empresa
+// define os próprios (inspirado numa régua real de 8 modalidades, mas
+// genérico pra qualquer área de negócio, não só mídia/OOH).
+model TipoFollowUp {
+  id        String            @id @default(uuid())
+  empresaId String            @map("empresa_id")
+  empresa   Empresa           @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  nome      String
+  objetivo  String?           @db.Text
+  // "automatico" = CALINDA manda sozinho por WhatsApp (literal ou com IA,
+  // igual às outras mensagens configuráveis); "manual" = não dá pra
+  // automatizar de verdade (ligação, visita) — vira uma notificação lembrando
+  // o vendedor, com o roteiro/script como apoio.
+  canal        CanalTipoFollowUp @default(automatico)
+  // Script/modelo de texto — mensagem pronta (canal automático) ou roteiro de
+  // apoio pro vendedor ler (canal manual). Aceita {nome}/{empresa}.
+  scriptModelo String            @db.Text
+  modoEnvio    String            @default("literal") @map("modo_envio") // "literal" | "ia" — só vale pro canal automático
+  ativo        Boolean           @default(true)
+  criadoEm     DateTime          @default(now()) @map("criado_em")
+
+  reguas ReguaFollowUp[]
+  envios FollowUpReguaEnvio[]
+
+  @@map("tipos_follow_up")
+}
+
+// Um marco da régua: "no dia X do contrato Y (periodicidade), pro perfil de
+// cliente Z, é devido o follow-up W". A combinação (perfil, periodicidade,
+// diaOffset) é só uma referência visual pro editor — nada impede duas linhas
+// no mesmo dia (raro, mas sem problema).
+model ReguaFollowUp {
+  id            String                @id @default(uuid())
+  empresaId     String                @map("empresa_id")
+  empresa       Empresa               @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  perfil        PerfilCliente
+  periodicidade PeriodicidadeContrato
+  diaOffset     Int                   @map("dia_offset")
+  tipoFollowUpId String               @map("tipo_follow_up_id")
+  tipoFollowUp   TipoFollowUp         @relation(fields: [tipoFollowUpId], references: [id], onDelete: Cascade)
+  criadoEm       DateTime             @default(now()) @map("criado_em")
+
+  envios FollowUpReguaEnvio[]
+
+  @@unique([empresaId, perfil, periodicidade, diaOffset, tipoFollowUpId])
+  @@map("reguas_follow_up")
+}
+
+// Registro de que um marco da régua já foi executado pra um cliente — evita
+// reenviar o mesmo follow-up em todo ciclo do poller (ver
+// src/lib/reguaFollowUpService.ts).
+model FollowUpReguaEnvio {
+  id             String        @id @default(uuid())
+  leadId         String        @map("lead_id")
+  lead           Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  reguaId        String        @map("regua_id")
+  regua          ReguaFollowUp @relation(fields: [reguaId], references: [id], onDelete: Cascade)
+  tipoFollowUpId String        @map("tipo_follow_up_id")
+  tipoFollowUp   TipoFollowUp  @relation(fields: [tipoFollowUpId], references: [id], onDelete: Cascade)
+  executadoEm    DateTime      @default(now()) @map("executado_em")
+
+  @@unique([leadId, reguaId])
+  @@map("follow_up_regua_envios")
 }
 
 model Notificacao {

@@ -4,6 +4,7 @@ import { pollLimparAssistente } from "@/lib/assistenteHistorico";
 import { pollRemarketing } from "@/lib/remarketingService";
 import { pollFollowUpClientes } from "@/lib/followUpService";
 import { pollFollowUpsAgendados } from "@/lib/followUpAgendadoService";
+import { pollReguaFollowUp } from "@/lib/reguaFollowUpService";
 
 /**
  * Disparador externo de tarefas em segundo plano — chamado periodicamente
@@ -60,6 +61,11 @@ export async function POST(req: Request) {
       await pollFollowUpClientes();
     } catch (err) {
       console.error("[cron/tick] erro ao processar follow-up de clientes:", err);
+    }
+    try {
+      await pollReguaFollowUp();
+    } catch (err) {
+      console.error("[cron/tick] erro ao processar régua de follow-up:", err);
     }
   }
 

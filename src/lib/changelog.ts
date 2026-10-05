@@ -13,6 +13,17 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-05",
+    titulo: "Régua de relacionamento e follow-up completo",
+    itens: [
+      "Novo sistema de régua de relacionamento (tela Follow-up): defina tipos de follow-up (mensagem, relatório, ligação, visita, renovação...) com script/roteiro próprio, e monte uma régua de marcos por dia de contrato — diferente por perfil de cliente (A/B/C) e periodicidade (trimestral/semestral/anual).",
+      "Botão \"Carregar modelo padrão\" já cria 8 tipos de follow-up prontos e a régua completa pra editar à vontade.",
+      "Clientes agora têm um campo de \"Perfil de follow-up\" (A/B/C) e vendas um campo de \"Periodicidade do contrato\" — é isso que decide qual marco da régua está devido.",
+      "Follow-ups automáticos (ex: mensagem de acompanhamento) são enviados sozinhos pelo WhatsApp; os manuais (ligação, visita) viram uma notificação lembrando o vendedor, com o roteiro de apoio.",
+      "O Assistente agora conhece os tipos de follow-up configurados e consegue consultar o que está pendente pra um cliente específico quando perguntado.",
+    ],
+  },
+  {
+    data: "2026-10-05",
     titulo: "Proposta comercial em PDF, Google Meet automático e melhorias gerais",
     itens: [
       "Orçamentos agora geram um PDF de proposta comercial completo (capa, diagnóstico, método, o que está incluso, prova social, investimento e fechamento), com tema visual e tipografia configuráveis em \"Editar modelo\".",
