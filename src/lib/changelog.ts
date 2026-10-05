@@ -13,9 +13,14 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-05",
-    titulo: "Proposta comercial em PDF e melhorias em Orçamentos",
+    titulo: "Proposta comercial em PDF, Google Meet automático e melhorias gerais",
     itens: [
       "Orçamentos agora geram um PDF de proposta comercial completo (capa, diagnóstico, método, o que está incluso, prova social, investimento e fechamento), com tema visual e tipografia configuráveis em \"Editar modelo\".",
+      "O link do Google Meet das reuniões marcadas pela IA agora é gerado de verdade pelo Google Calendar (não é mais um link fixo reaproveitado), e os e-mails convidados recebem o convite nativo do Google com RSVP.",
+      "Nova modalidade de reunião \"Presencial\", com campo de endereço.",
+      "Se o WhatsApp automático não conseguir enviar um orçamento, o sistema agora abre o wa.me com a conversa do cliente já pronta pra anexar o PDF manualmente.",
+      "Título da aba do navegador passou a mostrar o nome da empresa ativa.",
+      "Nova tela de Novidades (essa aqui!), com aviso automático do que mudou toda vez que você entra.",
       "Corrigido: cancelar a criação de um orçamento não deixava mais dados presos pra próxima vez que o modal abria.",
       "Novo botão para excluir um orçamento.",
       "Corrigido: o card \"Faturamento do Mês\" no Dashboard agora atualiza na hora ao registrar uma venda.",
