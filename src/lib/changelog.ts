@@ -27,6 +27,8 @@ export const CHANGELOG: EntradaChangelog[] = [
       "Corrigido: a contagem de usuários nos cards de Empresas estava desatualizada — agora reflete quem de fato tem acesso.",
       "A logo escrita do CALINDA substitui o texto nos cabeçalhos e na tela de login.",
       "Botão de Prévia em \"Editar modelo de proposta\" — mostra o PDF com dados de exemplo antes de salvar, pra ver como fica o design.",
+      "No Calendário, agora dá pra editar todas as informações de uma reunião (data/hora, responsável, título, descrição, modalidade) e excluir — o evento correspondente no Google Calendar é removido junto.",
+      "O chat Assistente tenta de novo automaticamente quando a IA responde com uma instabilidade passageira, antes de mostrar a mensagem de indisponível.",
     ],
   },
   {

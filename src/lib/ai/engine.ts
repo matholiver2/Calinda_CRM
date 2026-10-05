@@ -149,22 +149,33 @@ export async function chamarGeminiComFerramentas(
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("GEMINI_API_KEY não configurada");
 
-  // Sem fallback de modelo aqui (diferente de chamarGemini): o thoughtSignature
+  // Sem fallback de MODELO aqui (diferente de chamarGemini): o thoughtSignature
   // devolvido por modelos "thinking" só é válido pro mesmo modelo que o gerou
   // — trocar de modelo no meio de uma chamada de função quebraria o replay.
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${MODELOS_PREFERENCIA[0]}:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents,
-        tools: [{ functionDeclarations: ferramentas }],
-      }),
-    }
-  );
+  // Mas uma ÚNICA tentativa de novo no MESMO modelo é segura e reduz bastante
+  // o quanto o Assistente cai na mensagem genérica de "IA indisponível" só
+  // por causa de uma sobrecarga passageira do Gemini (429/503, muito comum).
+  async function tentarChamada(): Promise<Response> {
+    return fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODELOS_PREFERENCIA[0]}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents,
+          tools: [{ functionDeclarations: ferramentas }],
+        }),
+      }
+    );
+  }
 
+  let res = await tentarChamada();
+  if (!res.ok && STATUS_TENTAR_PROXIMO_MODELO.has(res.status)) {
+    console.error(`[ai/engine] Gemini (function calling) respondeu ${res.status}, tentando de novo...`);
+    await new Promise((r) => setTimeout(r, 1200));
+    res = await tentarChamada();
+  }
   if (!res.ok) {
     const corpo = await res.text().catch(() => "");
     console.error(`[ai/engine] Gemini (function calling) respondeu ${res.status}:`, corpo);

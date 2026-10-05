@@ -10,6 +10,9 @@ export type ReuniaoCalendario = {
   linkCalendario: string | null;
   modalidade: "google_meet" | "whatsapp" | "presencial";
   endereco: string | null;
+  titulo: string | null;
+  descricao: string | null;
+  emailsConvidados: string[];
 };
 
 export const STATUS_LABEL: Record<ReuniaoCalendario["status"], string> = {
