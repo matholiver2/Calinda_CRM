@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Select, Textarea, Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
 import { fetcher, apiPost, apiDelete, ApiError } from "@/lib/fetcher";
+import { normalizarTelefone } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Orcamento, Plano, Lead } from "@/types";
@@ -49,17 +50,36 @@ function OrcamentosConteudo() {
     }
   }
 
-  async function enviar(id: string, canal: "whatsapp" | "email") {
-    setEnviandoId(`${id}-${canal}`);
+  async function enviar(orcamento: Orcamento, canal: "whatsapp" | "email") {
+    setEnviandoId(`${orcamento.id}-${canal}`);
     try {
-      await apiPost(`/api/orcamentos/${id}/enviar-${canal === "whatsapp" ? "whatsapp" : "email"}`);
+      await apiPost(`/api/orcamentos/${orcamento.id}/enviar-${canal === "whatsapp" ? "whatsapp" : "email"}`);
       mutate("/api/orcamentos");
       alert(canal === "whatsapp" ? "Orçamento enviado pelo WhatsApp!" : "Orçamento enviado por e-mail!");
     } catch (err) {
+      // 409 = sem WhatsApp (não-oficial) conectado; 502 = estava "conectado"
+      // mas o envio de fato falhou (worker fora do ar etc.) — nos dois casos
+      // cai pro link wa.me: baixa o PDF numa aba e abre o WhatsApp Web/app
+      // com a conversa já aberta, pro vendedor anexar manualmente em segundos.
+      if (canal === "whatsapp" && err instanceof ApiError && (err.status === 409 || err.status === 502)) {
+        abrirWhatsappManual(orcamento);
+        return;
+      }
       alert(err instanceof ApiError ? err.message : "Erro ao enviar orçamento");
     } finally {
       setEnviandoId(null);
     }
+  }
+
+  function abrirWhatsappManual(orcamento: Orcamento) {
+    const numero = normalizarTelefone(orcamento.lead.telefone);
+    if (!numero) {
+      alert("Esse cliente não tem um telefone válido cadastrado.");
+      return;
+    }
+    const mensagem = `Olá, ${orcamento.lead.nome.split(" ")[0]}! Segue a proposta comercial em anexo.`;
+    window.open(`/api/orcamentos/${orcamento.id}/pdf`, "_blank");
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
   }
 
   return (
@@ -119,7 +139,7 @@ function OrcamentosConteudo() {
                     <Download className="h-4 w-4" />
                   </a>
                   <button
-                    onClick={() => enviar(o.id, "whatsapp")}
+                    onClick={() => enviar(o, "whatsapp")}
                     disabled={enviandoId === `${o.id}-whatsapp`}
                     title="Enviar pelo WhatsApp"
                     className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-accent-soft hover:text-accent disabled:opacity-50"
@@ -127,7 +147,7 @@ function OrcamentosConteudo() {
                     <MessageCircle className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => enviar(o.id, "email")}
+                    onClick={() => enviar(o, "email")}
                     disabled={enviandoId === `${o.id}-email` || !o.lead.email}
                     title={o.lead.email ? "Enviar por e-mail" : "Lead sem e-mail cadastrado"}
                     className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-accent-soft hover:text-accent disabled:opacity-50"
@@ -184,7 +204,7 @@ function OrcamentosConteudo() {
                           <Download className="h-4 w-4" />
                         </a>
                         <button
-                          onClick={() => enviar(o.id, "whatsapp")}
+                          onClick={() => enviar(o, "whatsapp")}
                           disabled={enviandoId === `${o.id}-whatsapp`}
                           title="Enviar pelo WhatsApp"
                           className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-accent-soft hover:text-accent disabled:opacity-50"
@@ -192,7 +212,7 @@ function OrcamentosConteudo() {
                           <MessageCircle className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => enviar(o.id, "email")}
+                          onClick={() => enviar(o, "email")}
                           disabled={enviandoId === `${o.id}-email` || !o.lead.email}
                           title={o.lead.email ? "Enviar por e-mail" : "Lead sem e-mail cadastrado"}
                           className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-accent-soft hover:text-accent disabled:opacity-50"

@@ -93,10 +93,19 @@ class BaileysWorkerProvider implements WhatsAppProvider {
     fileName: string,
     mimetype: string
   ): Promise<EnvioResultado> {
-    const res = await workerSendDocument(this.empresaId, { telefone, documentoBase64, fileName, mimetype });
-    if (!res.ok) return { idExterno: "", status: "falhou" };
-    const data = (await res.json().catch(() => null)) as { idExterno?: string } | null;
-    return { idExterno: data?.idExterno ?? "", status: "enviado" };
+    // Mesmo problema do enviarMensagem acima: worker fora do ar faz fetch()
+    // lançar em vez de devolver uma resposta — sem o try/catch, a rota de
+    // enviar orçamento/proposta por WhatsApp quebrava com 500 em vez de
+    // "falhou" (descoberto testando o fallback pro link wa.me).
+    try {
+      const res = await workerSendDocument(this.empresaId, { telefone, documentoBase64, fileName, mimetype });
+      if (!res.ok) return { idExterno: "", status: "falhou" };
+      const data = (await res.json().catch(() => null)) as { idExterno?: string } | null;
+      return { idExterno: data?.idExterno ?? "", status: "enviado" };
+    } catch (err) {
+      console.error("[whatsapp:baileys-worker] falha ao conectar no worker (documento):", err);
+      return { idExterno: "", status: "falhou" };
+    }
   }
 }
 
