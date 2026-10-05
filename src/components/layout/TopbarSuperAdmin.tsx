@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Logo } from "@/components/ui/Logo";
+import { LogoEscrita } from "@/components/ui/LogoEscrita";
 import type { SessionPayload } from "@/lib/auth";
 
 export function TopbarSuperAdmin({ usuario }: { usuario: SessionPayload }) {
@@ -19,7 +20,7 @@ export function TopbarSuperAdmin({ usuario }: { usuario: SessionPayload }) {
     <header className="flex items-center justify-between border-b border-border bg-bg-elevated px-6 py-4 lg:px-8">
       <div className="flex items-center gap-2.5">
         <Logo size="sm" />
-        <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">CALINDA</span>
+        <LogoEscrita heightClassName="h-5" />
         <span className="ml-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
           Super Admin
         </span>

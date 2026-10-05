@@ -10,7 +10,14 @@ export async function GET() {
 
   const empresas = await prisma.empresa.findMany({
     orderBy: { criadoEm: "desc" },
-    include: { _count: { select: { usuarios: true, leads: true } } },
+    include: {
+      // "usuarios" é a relação legada (Usuario.empresaId, 1:1, deprecada
+      // desde a migração multi-empresa — ver scripts/migrar-multi-empresa.ts)
+      // e não reflete mais quem de fato tem acesso. Quem conta hoje é
+      // MembroEmpresa, filtrado por ativo (convite revogado/usuário
+      // desativado não deve contar como acesso).
+      _count: { select: { membros: { where: { ativo: true } }, leads: true } },
+    },
   });
   return NextResponse.json({ empresas });
 }

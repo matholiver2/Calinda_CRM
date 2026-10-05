@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
+import { LogoEscrita } from "@/components/ui/LogoEscrita";
 import { fetcher } from "@/lib/fetcher";
 import { AlertCircle, Eye, EyeOff } from "lucide-react";
 
@@ -58,7 +59,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <Logo px={120} className="mb-3" />
-          <h1 className="font-display text-2xl font-semibold tracking-[-0.02em] text-fg">CALINDA</h1>
+          <LogoEscrita heightClassName="h-7" />
           <p className="mt-1 text-sm text-fg-muted">CRM automatizado com IA</p>
         </div>
 

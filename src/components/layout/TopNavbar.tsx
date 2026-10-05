@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
+import { LogoEscrita } from "@/components/ui/LogoEscrita";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { GlobalSearch } from "@/components/layout/GlobalSearch";
 import { AccountSwitcher } from "@/components/layout/AccountSwitcher";
@@ -19,7 +20,7 @@ export function TopNavbar({ usuario }: { usuario: SessionPayload }) {
       <div className="flex items-center gap-2 md:gap-2.5">
         <MobileNavDrawer />
         <Logo size="sm" />
-        <span className="hidden font-display text-lg font-semibold tracking-[-0.02em] text-fg sm:inline">CALINDA</span>
+        <LogoEscrita heightClassName="h-5" className="hidden sm:inline-block" />
       </div>
 
       <nav className="hidden h-9 items-center gap-1 rounded-full bg-bg px-1.5 md:flex">

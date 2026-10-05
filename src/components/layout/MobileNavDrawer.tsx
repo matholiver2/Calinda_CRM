@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, Settings, Sparkles, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
+import { LogoEscrita } from "@/components/ui/LogoEscrita";
 import { TABS, GROUP_B } from "@/components/layout/navItems";
 
 const TODOS_OS_ITENS = [...TABS, ...GROUP_B];
@@ -49,7 +50,7 @@ export function MobileNavDrawer() {
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <Logo size="sm" />
-                <span className="font-display text-base font-semibold tracking-[-0.02em] text-fg">CALINDA</span>
+                <LogoEscrita heightClassName="h-4.5" />
               </div>
               <button
                 onClick={() => setAberto(false)}

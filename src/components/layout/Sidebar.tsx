@@ -16,6 +16,7 @@ import {
 import { cn, papelLabel } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { Logo } from "@/components/ui/Logo";
+import { LogoEscrita } from "@/components/ui/LogoEscrita";
 import type { SessionPayload } from "@/lib/auth";
 
 const NAV = [
@@ -43,7 +44,7 @@ export function Sidebar({ usuario, empresaNome }: { usuario: SessionPayload; emp
       <div className="px-5 py-5">
         <div className="flex items-center gap-2.5">
           <Logo size="sm" />
-          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">CALINDA</span>
+          <LogoEscrita heightClassName="h-5" />
         </div>
         {empresaNome && (
           <div className="mt-2 flex items-center gap-1.5 truncate text-xs text-fg-subtle">

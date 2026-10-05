@@ -16,8 +16,9 @@ type Empresa = {
   id: string;
   nome: string;
   ativo: boolean;
+  logoUrl: string | null;
   criadoEm: string;
-  _count: { usuarios: number; leads: number };
+  _count: { membros: number; leads: number };
 };
 
 export default function EmpresasPage() {
@@ -71,14 +72,23 @@ export default function EmpresasPage() {
         {empresas.map((e) => (
           <Card key={e.id} className="p-5">
             <div className="mb-3 flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
-                <Building2 className="h-5 w-5" />
-              </div>
+              {e.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- logo de empresa arbitrária (Supabase Storage), não um asset estático do projeto
+                <img
+                  src={e.logoUrl}
+                  alt={e.nome}
+                  className="h-10 w-10 rounded-lg object-contain bg-surface-hover"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                  <Building2 className="h-5 w-5" />
+                </div>
+              )}
               <Badge color={e.ativo ? "#10B981" : "#71717a"}>{e.ativo ? "Ativa" : "Inativa"}</Badge>
             </div>
             <h3 className="text-base font-semibold text-fg">{e.nome}</h3>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-fg-subtle">
-              <Users className="h-3 w-3" /> {e._count.usuarios} usuários · {e._count.leads} leads
+              <Users className="h-3 w-3" /> {e._count.membros} usuário{e._count.membros === 1 ? "" : "s"} · {e._count.leads} leads
             </p>
             <div className="mt-4 flex gap-2">
               <Button
