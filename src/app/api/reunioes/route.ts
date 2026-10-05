@@ -57,6 +57,10 @@ export async function POST(req: Request) {
       modalidade: body?.modalidade ?? "whatsapp",
       titulo: body?.titulo || null,
       descricao: body?.descricao || null,
+      endereco: body?.endereco || null,
+      emailsConvidados: Array.isArray(body?.emailsConvidados)
+        ? body.emailsConvidados.filter((e: unknown): e is string => typeof e === "string" && e.includes("@"))
+        : [],
     },
     include: { lead: true, vendedor: true },
   });

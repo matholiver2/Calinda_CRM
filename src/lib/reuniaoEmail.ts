@@ -36,10 +36,14 @@ export async function enviarConviteReuniaoPorEmail(reuniaoId: string, emailsAdic
     if (!reuniao || reuniao.modalidade !== "google_meet" || !reuniao.linkCalendario) return;
     if (!reuniao.vendedor) return;
 
-    // Convite vai pro e-mail do lead (se tiver) e pra qualquer endereço extra
-    // pedido explicitamente (ex: "agenda e manda pro fulano@email.com" no
-    // chat Assistente — ver src/lib/ai/assistenteEngine.ts).
-    const destinatarios = [...new Set([reuniao.lead.email, ...emailsAdicionais].filter((e): e is string => !!e))];
+    // Convite vai pro e-mail do lead (se tiver), pros emails persistidos na
+    // reunião (Reuniao.emailsConvidados — também usados como "attendees"
+    // nativos do Google, ver sincronizarReuniaoComGoogle) e pra qualquer
+    // endereço extra passado direto nessa chamada (ex: "agenda e manda pro
+    // fulano@email.com" no chat Assistente, antes de persistir).
+    const destinatarios = [
+      ...new Set([reuniao.lead.email, ...reuniao.emailsConvidados, ...emailsAdicionais].filter((e): e is string => !!e)),
+    ];
     if (destinatarios.length === 0) return;
 
     const dataFormatada = reuniao.dataHora.toLocaleString("pt-BR", {

@@ -1,10 +1,23 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { getSession } from "@/lib/session";
 import { getEmpresaAtivaId } from "@/lib/tenant";
 import { prisma } from "@/lib/db";
 import { precisaOnboarding, precisaOnboardingPessoal } from "@/lib/onboarding";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { EmpresaBanner } from "@/components/features/EmpresaBanner";
+
+// Título da aba vira "Calinda | <nome da empresa ativa>" (ver title.template
+// no layout raiz) — super_admin sem empresa "entrada" (ex: em /empresas)
+// cai no default "Calinda | CRM automatizado".
+export async function generateMetadata(): Promise<Metadata> {
+  const session = await getSession();
+  if (!session) return {};
+  const empresaAtivaId = await getEmpresaAtivaId(session);
+  if (!empresaAtivaId) return {};
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaAtivaId }, select: { nome: true } });
+  return empresa ? { title: empresa.nome } : {};
+}
 
 export default async function RouteLayout({ children }: { children: React.ReactNode }) {
   // getSession já confere Usuario.ativo e MembroEmpresa.ativo da empresa

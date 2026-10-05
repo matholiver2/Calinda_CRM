@@ -65,6 +65,7 @@ enum StatusReuniao {
 enum ModalidadeReuniao {
   google_meet
   whatsapp
+  presencial
 }
 
 enum ResultadoReuniao {
@@ -359,6 +360,14 @@ model Reuniao {
   // partir dos dados de contrato do cliente (Lead/Venda) quando a reunião
   // é criada como "follow-up de renovação" (ver reuniaoDescricao.ts).
   descricao      String?          @db.Text
+  // E-mails extras convidados pra reunião (além do e-mail do lead), pedidos
+  // explicitamente ao agendar (manual, IA do funil ou Assistente) —
+  // persistido pra sincronizarReuniaoComGoogle incluir como "attendees" do
+  // evento do Google (convite nativo, com botão de entrar no Meet) mesmo
+  // numa resincronização posterior, não só na criação.
+  emailsConvidados String[]        @default([]) @map("emails_convidados")
+  // Endereço do encontro — só usado/exibido quando modalidade = presencial.
+  endereco       String?          @db.Text
   lembrete1hEnviado      Boolean  @default(false) @map("lembrete_1h_enviado")
   lembrete15minEnviado   Boolean  @default(false) @map("lembrete_15min_enviado")
   lembreteInicioEnviado  Boolean  @default(false) @map("lembrete_inicio_enviado")

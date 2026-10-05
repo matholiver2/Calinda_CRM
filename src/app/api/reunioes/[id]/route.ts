@@ -37,6 +37,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       dataHora: body?.dataHora ? new Date(body.dataHora) : undefined,
       vendedorId: body?.vendedorId,
       modalidade: body?.modalidade,
+      endereco: body?.endereco !== undefined ? body.endereco || null : undefined,
     },
     include: { lead: true },
   });

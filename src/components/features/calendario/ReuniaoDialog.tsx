@@ -3,10 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { Save, Video, MessageCircle, ExternalLink, ArrowRight } from "lucide-react";
+import { Save, Video, MessageCircle, MapPin, ExternalLink, ArrowRight } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
-import { Select } from "@/components/ui/Input";
+import { Select, Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
 import { fetcher, apiPatch, ApiError } from "@/lib/fetcher";
 import { STATUS_LABEL, type ReuniaoCalendario } from "./types";
@@ -43,17 +43,23 @@ function ReuniaoForm({
 
   const [status, setStatus] = useState<ReuniaoCalendario["status"]>(reuniao.status);
   const [modalidade, setModalidade] = useState<ReuniaoCalendario["modalidade"]>(reuniao.modalidade);
+  const [endereco, setEndereco] = useState(reuniao.endereco ?? "");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar() {
     setErro(null);
+    if (modalidade === "presencial" && !endereco.trim()) {
+      setErro("Informe o endereço do encontro");
+      return;
+    }
     setLoading(true);
     try {
       await apiPatch(`/api/reunioes/${reuniao.id}`, {
         status,
         modalidade,
         linkCalendario: modalidade === "google_meet" ? meetLink || null : null,
+        endereco: modalidade === "presencial" ? endereco.trim() : null,
       });
       onSalvo();
       onClose();
@@ -94,7 +100,7 @@ function ReuniaoForm({
 
       <div>
         <label className="mb-1.5 block text-xs font-medium text-fg-muted">Modalidade</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setModalidade("google_meet")}
@@ -105,7 +111,7 @@ function ReuniaoForm({
                 : "border-border text-fg-muted hover:bg-surface-hover"
             )}
           >
-            <Video className="h-4 w-4" /> Google Meet
+            <Video className="h-4 w-4" /> Meet
           </button>
           <button
             type="button"
@@ -117,7 +123,19 @@ function ReuniaoForm({
                 : "border-border text-fg-muted hover:bg-surface-hover"
             )}
           >
-            <MessageCircle className="h-4 w-4" /> Ligação WhatsApp
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalidade("presencial")}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-[10px] border px-3 py-2.5 text-sm font-medium transition-colors",
+              modalidade === "presencial"
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-border text-fg-muted hover:bg-surface-hover"
+            )}
+          >
+            <MapPin className="h-4 w-4" /> Presencial
           </button>
         </div>
         {modalidade === "google_meet" &&
@@ -137,6 +155,14 @@ function ReuniaoForm({
           ))}
         {modalidade === "whatsapp" && (
           <p className="mt-2 text-xs text-fg-subtle">A reunião será feita por ligação no número do lead.</p>
+        )}
+        {modalidade === "presencial" && (
+          <Input
+            className="mt-2"
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
+            placeholder="Endereço do encontro"
+          />
         )}
       </div>
 

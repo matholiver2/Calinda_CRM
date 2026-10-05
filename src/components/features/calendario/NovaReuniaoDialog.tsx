@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Save, Video, MessageCircle, ExternalLink, FileClock } from "lucide-react";
+import { Save, Video, MessageCircle, MapPin, ExternalLink, FileClock } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Select, Input, Textarea } from "@/components/ui/Input";
@@ -39,7 +39,9 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
   const [leadId, setLeadId] = useState("");
   const [vendedorId, setVendedorId] = useState(meData?.usuario?.id ?? "");
   const [dataHora, setDataHora] = useState("");
-  const [modalidade, setModalidade] = useState<"google_meet" | "whatsapp">("whatsapp");
+  const [modalidade, setModalidade] = useState<"google_meet" | "whatsapp" | "presencial">("whatsapp");
+  const [endereco, setEndereco] = useState("");
+  const [emailsConvite, setEmailsConvite] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -72,14 +74,24 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
       setErro("Selecione o cliente e a data/hora");
       return;
     }
+    if (modalidade === "presencial" && !endereco.trim()) {
+      setErro("Informe o endereço do encontro");
+      return;
+    }
     setLoading(true);
     try {
+      const emailsConvidados = emailsConvite
+        .split(",")
+        .map((e) => e.trim())
+        .filter((e) => e.includes("@"));
       await apiPost("/api/reunioes", {
         leadId,
         vendedorId: vendedorId || undefined,
         dataHora: new Date(dataHora).toISOString(),
         modalidade,
         linkCalendario: modalidade === "google_meet" ? meetLink || null : null,
+        endereco: modalidade === "presencial" ? endereco.trim() : undefined,
+        emailsConvidados,
         titulo: titulo.trim() || undefined,
         descricao: descricao.trim() || undefined,
       });
@@ -125,7 +137,7 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
 
       <div>
         <label className="mb-1.5 block text-xs font-medium text-fg-muted">Modalidade</label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             type="button"
             onClick={() => setModalidade("google_meet")}
@@ -136,7 +148,7 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
                 : "border-border text-fg-muted hover:bg-surface-hover"
             )}
           >
-            <Video className="h-4 w-4" /> Google Meet
+            <Video className="h-4 w-4" /> Meet
           </button>
           <button
             type="button"
@@ -148,7 +160,19 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
                 : "border-border text-fg-muted hover:bg-surface-hover"
             )}
           >
-            <MessageCircle className="h-4 w-4" /> Ligação WhatsApp
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </button>
+          <button
+            type="button"
+            onClick={() => setModalidade("presencial")}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-[10px] border px-3 py-2.5 text-sm font-medium transition-colors",
+              modalidade === "presencial"
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-border text-fg-muted hover:bg-surface-hover"
+            )}
+          >
+            <MapPin className="h-4 w-4" /> Presencial
           </button>
         </div>
         {modalidade === "google_meet" &&
@@ -163,9 +187,25 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
             </a>
           ) : (
             <p className="mt-2 text-xs text-warning">
-              Nenhum link de Meet configurado ainda — defina em Configurações → Agenda.
+              Nenhum link de Meet configurado ainda — gerado automaticamente se o responsável tiver o Google Calendar conectado, ou defina um fixo em Configurações → Agenda.
             </p>
           ))}
+        {modalidade === "google_meet" && (
+          <Input
+            className="mt-2"
+            value={emailsConvite}
+            onChange={(e) => setEmailsConvite(e.target.value)}
+            placeholder="E-mails extras pro convite, separados por vírgula"
+          />
+        )}
+        {modalidade === "presencial" && (
+          <Input
+            className="mt-2"
+            value={endereco}
+            onChange={(e) => setEndereco(e.target.value)}
+            placeholder="Endereço do encontro"
+          />
+        )}
       </div>
 
       <div>

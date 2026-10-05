@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { sincronizarReuniaoComGoogle } from "@/lib/googleCalendarSync";
+import { proximoHorarioLivre } from "@/lib/conversationService";
 import { enviarConviteReuniaoPorEmail } from "@/lib/reuniaoEmail";
 import { criarNotificacao } from "@/lib/notificacoes";
 import type { FerramentaDeclaracao } from "@/lib/ai/engine";
@@ -89,35 +90,47 @@ async function executarAgendarReuniao(
 
   const lead = candidatos[0];
 
+  // Checa se o vendedor (a própria pessoa usando o Assistente) já tem outra
+  // reunião nesse horário e empurra pro próximo horário livre em vez de
+  // marcar em cima — mesma lógica usada quando é a IA do funil que agenda.
+  const dataHoraFinal = await proximoHorarioLivre(ctx.usuarioId, dataHora);
+  const horarioAjustado = dataHoraFinal.getTime() !== dataHora.getTime();
+
   const configMeet = await prisma.configuracao.findUnique({
     where: { empresaId_chave: { empresaId: ctx.empresaId, chave: "google_meet_link" } },
   });
-  const meetLink = configMeet?.valor?.trim() || null;
-  const modalidade: "google_meet" | "whatsapp" = meetLink ? "google_meet" : "whatsapp";
+  const linkFallback = configMeet?.valor?.trim() || null;
 
   const reuniao = await prisma.reuniao.create({
     data: {
       leadId: lead.id,
       vendedorId: ctx.usuarioId,
-      dataHora,
+      dataHora: dataHoraFinal,
       status: "agendada",
       resultado: "pendente",
-      modalidade,
-      linkCalendario: meetLink,
+      modalidade: "google_meet",
+      linkCalendario: linkFallback,
+      emailsConvidados: emails,
     },
   });
 
-  void sincronizarReuniaoComGoogle(reuniao.id);
+  // Awaited: a resposta pro usuário do Assistente precisa dizer se saiu um
+  // Google Meet de verdade ou se caiu pra WhatsApp, não dá pra responder
+  // isso sem esperar a sincronização terminar.
+  let linkFinal = await sincronizarReuniaoComGoogle(reuniao.id);
+  if (!linkFinal) {
+    await prisma.reuniao.update({ where: { id: reuniao.id }, data: { modalidade: "whatsapp" } });
+  }
   void enviarConviteReuniaoPorEmail(reuniao.id, emails);
   void criarNotificacao(ctx.empresaId, {
     tipo: "conversa_mudou_etapa",
     titulo: `Reunião agendada com ${lead.nome}`,
-    corpo: `Marcada pelo Assistente para ${dataHora.toLocaleString("pt-BR")}.`,
+    corpo: `Marcada pelo Assistente para ${dataHoraFinal.toLocaleString("pt-BR")}.`,
     leadId: lead.id,
     reuniaoId: reuniao.id,
   });
 
-  const dataFormatada = dataHora.toLocaleString("pt-BR", {
+  const dataFormatada = dataHoraFinal.toLocaleString("pt-BR", {
     timeZone: "America/Sao_Paulo",
     weekday: "long",
     day: "2-digit",
@@ -127,13 +140,14 @@ async function executarAgendarReuniao(
   });
   const destinosEmail = [lead.email, ...emails].filter((e): e is string => !!e);
 
-  let resultado = `Reunião marcada com ${lead.nome} para ${dataFormatada}, modalidade ${
-    modalidade === "google_meet" ? "Google Meet" : "ligação por WhatsApp"
-  }.`;
-  if (modalidade === "google_meet" && destinosEmail.length > 0) {
-    resultado += ` Convite por e-mail enviado pra: ${destinosEmail.join(", ")}.`;
-  } else if (modalidade === "whatsapp" && emails.length > 0) {
-    resultado += ` Não foi possível enviar convite por e-mail com link porque não há um Google Meet configurado (Configurações → Agenda) — a reunião ficou marcada como ligação por WhatsApp.`;
+  let resultado = `Reunião marcada com ${lead.nome} para ${dataFormatada}`;
+  if (horarioAjustado) resultado += ` (ajustei o horário porque você já tinha outra reunião marcada nesse horário)`;
+  resultado += `, modalidade ${linkFinal ? "Google Meet" : "ligação por WhatsApp"}.`;
+  if (linkFinal) {
+    resultado += ` Link: ${linkFinal}.`;
+    if (destinosEmail.length > 0) resultado += ` Convite por e-mail enviado pra: ${destinosEmail.join(", ")}.`;
+  } else if (emails.length > 0) {
+    resultado += ` Não foi possível gerar um Google Meet (conecte seu Google Calendar em Configurações, ou configure um link fixo em Configurações → Agenda) — a reunião ficou marcada como ligação por WhatsApp.`;
   }
   return resultado;
 }

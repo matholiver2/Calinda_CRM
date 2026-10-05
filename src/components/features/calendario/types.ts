@@ -8,7 +8,8 @@ export type ReuniaoCalendario = {
   status: "agendada" | "confirmada" | "realizada" | "no_show" | "cancelada";
   resultado: "fechou" | "nao_fechou" | "pendente";
   linkCalendario: string | null;
-  modalidade: "google_meet" | "whatsapp";
+  modalidade: "google_meet" | "whatsapp" | "presencial";
+  endereco: string | null;
 };
 
 export const STATUS_LABEL: Record<ReuniaoCalendario["status"], string> = {

@@ -33,7 +33,8 @@ function dataFuturaValida(iso: string | null): Date | null {
  * uma reunião (de outro lead) desse vendedor dentro da duração padrão do
  * horário desejado, empurra em blocos de 30min até achar um horário livre.
  */
-async function proximoHorarioLivre(vendedorId: string, desejado: Date): Promise<Date> {
+/** Exportado pra ser reaproveitado por quem mais agenda reunião sem passar por essa função (ver assistenteFerramentas.ts). */
+export async function proximoHorarioLivre(vendedorId: string, desejado: Date): Promise<Date> {
   let candidato = new Date(desejado);
   for (let tentativa = 0; tentativa < 16; tentativa++) {
     const inicio = candidato;
@@ -306,15 +307,15 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
         dataHora = await proximoHorarioLivre(vendedorIdFinal, dataHora);
       }
 
-      // Se a empresa tem um link de Meet configurado (Configurações > Agenda),
-      // a reunião marcada pela IA já sai como Google Meet em vez de ligação de
-      // WhatsApp — sem isso, toda reunião da IA nascia "whatsapp" mesmo com o
-      // Meet configurado, e o lead nunca recebia o link.
+      // Preferência: sempre tentar Google Meet com link gerado de verdade
+      // pelo Google Calendar (conferenceData), não mais um link fixo
+      // reaproveitado em toda reunião — ver sincronizarReuniaoComGoogle. O
+      // link fixo configurado em Configurações > Agenda vira só um fallback
+      // pra quando o vendedor ainda não conectou o próprio Google Calendar.
       const configMeet = await prisma.configuracao.findUnique({
         where: { empresaId_chave: { empresaId: lead.empresaId, chave: "google_meet_link" } },
       });
-      const meetLink = configMeet?.valor?.trim() || null;
-      const modalidade: "google_meet" | "whatsapp" = meetLink ? "google_meet" : "whatsapp";
+      const linkFallback = configMeet?.valor?.trim() || null;
 
       // Se esse lead já tem uma reunião em aberto (ex: outra mensagem da mesma
       // conversa também disparou sugerir_reuniao), reagenda em vez de duplicar.
@@ -326,7 +327,7 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
       reuniaoCriada = reuniaoExistente
         ? await prisma.reuniao.update({
             where: { id: reuniaoExistente.id },
-            data: { dataHora, vendedorId: vendedorIdFinal, modalidade, linkCalendario: meetLink },
+            data: { dataHora, vendedorId: vendedorIdFinal, modalidade: "google_meet", linkCalendario: linkFallback },
           })
         : await prisma.reuniao.create({
             data: {
@@ -335,12 +336,27 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
               dataHora,
               status: "agendada",
               resultado: "pendente",
-              modalidade,
-              linkCalendario: meetLink,
+              modalidade: "google_meet",
+              linkCalendario: linkFallback,
             },
           });
 
-      void sincronizarReuniaoComGoogle(reuniaoCriada.id);
+      // Awaited (não "void" como o resto dos efeitos colaterais daqui pra
+      // baixo) porque a mensagem que avisa o lead do link precisa do link
+      // real gerado agora, não de uma versão desatualizada.
+      const linkFinal = await sincronizarReuniaoComGoogle(reuniaoCriada.id);
+      if (!linkFinal) {
+        // Nem o Google gerou um link (vendedor sem calendário conectado) nem
+        // havia um fallback configurado — melhor cair pra ligação por
+        // WhatsApp do que marcar "Google Meet" sem nenhum link pro lead.
+        reuniaoCriada = await prisma.reuniao.update({
+          where: { id: reuniaoCriada.id },
+          data: { modalidade: "whatsapp" },
+        });
+      } else if (linkFinal !== reuniaoCriada.linkCalendario) {
+        reuniaoCriada.linkCalendario = linkFinal;
+      }
+
       void criarNotificacao(lead.empresaId, {
         tipo: "conversa_mudou_etapa",
         titulo: `Reunião agendada com ${lead.nome}`,
@@ -349,7 +365,7 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
         reuniaoId: reuniaoCriada.id,
       });
 
-      if (meetLink) {
+      if (linkFinal) {
         const dataFormatada = dataHora.toLocaleString("pt-BR", {
           timeZone: "America/Sao_Paulo",
           weekday: "long",
@@ -362,7 +378,7 @@ export async function responderComIa(leadId: string, mensagemGatilhoId: string) 
           data: {
             leadId: lead.id,
             remetente: "ia",
-            conteudo: `Nossa reunião fica marcada para ${dataFormatada}, pelo Google Meet. Segue o link: ${meetLink}`,
+            conteudo: `Nossa reunião fica marcada para ${dataFormatada}, pelo Google Meet. Segue o link: ${linkFinal}`,
             statusEntrega: "enviado",
           },
         });

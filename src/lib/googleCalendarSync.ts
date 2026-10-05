@@ -12,34 +12,63 @@ import { comRetryConexao } from "@/lib/db";
  * responsável. Chamado depois de criar/editar/cancelar uma reunião (manual
  * ou pela IA). Não faz nada se o vendedor não tiver calendário conectado —
  * a reunião continua funcionando normalmente dentro do CALINDA.
+ *
+ * Quando a modalidade é "google_meet", pede pro Google gerar o link de
+ * verdade (conferenceData) em vez de reutilizar um link fixo configurado —
+ * e convida nativamente o e-mail do lead + emailsConvidados como attendees,
+ * o que já dispara o convite por e-mail/Gmail com RSVP e botão de entrar
+ * direto do próprio Google (sendUpdates=all). Devolve o linkCalendario final
+ * (ou null se não deu pra gerar/sincronizar — ex: vendedor sem Google
+ * conectado) pra quem chamou poder decidir um fallback.
  */
-export async function sincronizarReuniaoComGoogle(reuniaoId: string): Promise<void> {
+export async function sincronizarReuniaoComGoogle(reuniaoId: string): Promise<string | null> {
   const reuniao = await prisma.reuniao.findUnique({
     where: { id: reuniaoId },
     include: { lead: true, vendedor: true },
   });
-  if (!reuniao || !reuniao.vendedor?.googleCalendarRefreshToken) return;
+  if (!reuniao) return null;
+  // Sem vendedor com Google Calendar conectado não dá pra gerar o Meet de
+  // verdade — devolve o que já estava salvo (ex: link fixo configurado como
+  // fallback em Configurações > Agenda) em vez de null, pra não apagar um
+  // fallback que quem chamou já tinha preenchido na criação.
+  if (!reuniao.vendedor?.googleCalendarRefreshToken) return reuniao.linkCalendario;
+
+  const comGoogleMeet = reuniao.modalidade === "google_meet";
+  const attendees = [reuniao.lead.email, ...reuniao.emailsConvidados].filter((e): e is string => !!e);
+  const opcoes = { comGoogleMeet, attendees, endereco: reuniao.modalidade === "presencial" ? reuniao.endereco : null };
 
   try {
     if (reuniao.status === "cancelada") {
       if (reuniao.googleEventId) {
         await excluirEventoGoogle(reuniao.vendedor, reuniao.googleEventId);
       }
-      return;
+      return reuniao.linkCalendario;
     }
 
     if (reuniao.googleEventId) {
-      const ok = await atualizarEventoGoogle(reuniao.vendedor, reuniao.googleEventId, reuniao, reuniao.lead);
-      if (ok) return;
+      const resultado = await atualizarEventoGoogle(reuniao.vendedor, reuniao.googleEventId, reuniao, reuniao.lead, opcoes);
+      if (resultado.ok) {
+        const linkFinal = resultado.meetLink ?? reuniao.linkCalendario;
+        if (linkFinal !== reuniao.linkCalendario) {
+          await prisma.reuniao.update({ where: { id: reuniao.id }, data: { linkCalendario: linkFinal } });
+        }
+        return linkFinal;
+      }
       // Evento não existe mais no Google (ex: apagado por lá) — recria abaixo.
     }
 
-    const novoId = await criarEventoGoogle(reuniao.vendedor, reuniao, reuniao.lead);
-    if (novoId) {
-      await prisma.reuniao.update({ where: { id: reuniao.id }, data: { googleEventId: novoId } });
-    }
+    const criado = await criarEventoGoogle(reuniao.vendedor, reuniao, reuniao.lead, opcoes);
+    if (!criado) return reuniao.linkCalendario;
+
+    const linkFinal = criado.meetLink ?? reuniao.linkCalendario;
+    await prisma.reuniao.update({
+      where: { id: reuniao.id },
+      data: { googleEventId: criado.eventId, linkCalendario: linkFinal },
+    });
+    return linkFinal;
   } catch (err) {
     console.error("[googleCalendarSync] falha ao sincronizar reunião", reuniaoId, err);
+    return reuniao.linkCalendario;
   }
 }
 

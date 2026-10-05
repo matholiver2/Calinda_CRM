@@ -23,7 +23,10 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CALINDA",
+  // title/%s vira "Calinda | <o que a página passar>" — rotas autenticadas
+  // (ver (app)/layout.tsx::generateMetadata) passam o nome da empresa ativa;
+  // quem não define nada (login, páginas públicas) cai no default abaixo.
+  title: { default: "Calinda | CRM automatizado", template: "Calinda | %s" },
   description: "CRM automatizado com IA — condução de leads via WhatsApp até o agendamento de reunião.",
   appleWebApp: {
     capable: true,
