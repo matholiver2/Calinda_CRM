@@ -26,6 +26,7 @@ export const CHANGELOG: EntradaChangelog[] = [
       "Corrigido: o card \"Faturamento do Mês\" no Dashboard agora atualiza na hora ao registrar uma venda.",
       "Corrigido: a contagem de usuários nos cards de Empresas estava desatualizada — agora reflete quem de fato tem acesso.",
       "A logo escrita do CALINDA substitui o texto nos cabeçalhos e na tela de login.",
+      "Botão de Prévia em \"Editar modelo de proposta\" — mostra o PDF com dados de exemplo antes de salvar, pra ver como fica o design.",
     ],
   },
   {

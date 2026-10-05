@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Eye } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
@@ -59,10 +59,37 @@ function Formulario({ inicial, onSalvo }: { inicial: ModeloProposta; onSalvo: ()
   const [tab, setTab] = useState<TabId>("marca");
   const [modelo, setModelo] = useState<ModeloProposta>(inicial);
   const [salvando, setSalvando] = useState(false);
+  const [gerandoPreVia, setGerandoPreVia] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   function set<K extends keyof ModeloProposta>(key: K, valor: ModeloProposta[K]) {
     setModelo((m) => ({ ...m, [key]: valor }));
+  }
+
+  async function prever() {
+    setErro(null);
+    setGerandoPreVia(true);
+    // Abre a aba já na hora do clique (síncrono) — esperar o fetch terminar
+    // pra só então chamar window.open faria o navegador tratar como popup
+    // não solicitado pelo usuário e bloquear.
+    const aba = window.open("", "_blank");
+    try {
+      const res = await fetch("/api/configuracoes/proposta/preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(modelo),
+      });
+      if (!res.ok) throw new Error("Erro ao gerar prévia");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      if (aba) aba.location.href = url;
+      else window.open(url, "_blank");
+    } catch {
+      aba?.close();
+      setErro("Erro ao gerar a prévia do modelo");
+    } finally {
+      setGerandoPreVia(false);
+    }
   }
 
   async function salvar() {
@@ -110,7 +137,10 @@ function Formulario({ inicial, onSalvo }: { inicial: ModeloProposta; onSalvo: ()
 
       {erro && <p className="mt-3 text-sm text-danger">{erro}</p>}
 
-      <div className="mt-5 flex justify-end border-t border-border pt-4">
+      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+        <Button variant="secondary" onClick={prever} loading={gerandoPreVia}>
+          <Eye className="h-3.5 w-3.5" /> Prévia
+        </Button>
         <Button onClick={salvar} loading={salvando}>
           Salvar modelo
         </Button>

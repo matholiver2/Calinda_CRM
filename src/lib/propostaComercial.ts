@@ -39,34 +39,35 @@ const PERIODICIDADE_LABEL: Record<string, string> = {
   unico: " (pagamento único)",
 };
 
-export async function carregarPropostaParaPdf(orcamentoId: string, empresaId: string): Promise<DadosPropostaPdf | null> {
-  const orcamento = await prisma.orcamento.findUnique({
-    where: { id: orcamentoId },
-    include: {
-      empresa: { select: { nome: true, logoUrl: true } },
-      lead: { select: { nome: true, telefone: true, email: true } },
-      plano: { select: { nome: true, periodicidade: true } },
-      criadoPor: { select: { nome: true } },
-    },
-  });
-  if (!orcamento || orcamento.empresaId !== empresaId) return null;
+type InfoOrcamento = {
+  empresaNome: string;
+  empresaLogoUrl: string | null;
+  lead: { nome: string; telefone: string; email: string | null };
+  consultorNome: string | null;
+  valor: number;
+  periodicidadeLabel: string;
+  planoNome: string | null;
+  criadoEm: Date;
+  /** Observações do orçamento — usadas como diagnóstico de fallback só quando o modelo não configura um texto próprio. */
+  observacoes?: string | null;
+};
 
-  const m = await carregarModeloProposta(empresaId);
-  const interp = (t: string) => interpolar(t, orcamento.lead.nome, orcamento.empresa.nome);
+function montarDadosProposta(m: ModeloProposta, info: InfoOrcamento): DadosPropostaPdf {
+  const interp = (t: string) => interpolar(t, info.lead.nome, info.empresaNome);
 
   return {
-    empresaNome: orcamento.empresa.nome,
-    empresaLogoUrl: orcamento.empresa.logoUrl,
+    empresaNome: info.empresaNome,
+    empresaLogoUrl: info.empresaLogoUrl,
     tema: m.tema,
     fonte: m.fonte,
     corDestaque: m.corDestaque,
-    criadoEm: orcamento.criadoEm,
-    lead: orcamento.lead,
-    consultorNome: orcamento.criadoPor?.nome ?? null,
+    criadoEm: info.criadoEm,
+    lead: info.lead,
+    consultorNome: info.consultorNome,
     validadeDias: m.validadeDias,
-    valor: decimalParaNumero(orcamento.valor),
-    periodicidadeLabel: orcamento.plano ? PERIODICIDADE_LABEL[orcamento.plano.periodicidade] ?? "" : "",
-    planoNome: orcamento.plano?.nome ?? null,
+    valor: info.valor,
+    periodicidadeLabel: info.periodicidadeLabel,
+    planoNome: info.planoNome,
 
     capaEyebrow: interp(m.capaEyebrow),
     capaHeadline: interp(m.capaHeadline),
@@ -74,7 +75,7 @@ export async function carregarPropostaParaPdf(orcamentoId: string, empresaId: st
 
     secoes: m.secoes,
 
-    diagnostico: m.diagnostico ? interp(m.diagnostico) : orcamento.observacoes || null,
+    diagnostico: m.diagnostico ? interp(m.diagnostico) : info.observacoes || null,
     custoMensal: m.custoMensal,
 
     metodoNome: m.metodoNome || null,
@@ -95,4 +96,54 @@ export async function carregarPropostaParaPdf(orcamentoId: string, empresaId: st
     fechamento: m.fechamento ? interp(m.fechamento) : null,
     ctaTexto: m.ctaTexto || null,
   };
+}
+
+export async function carregarPropostaParaPdf(orcamentoId: string, empresaId: string): Promise<DadosPropostaPdf | null> {
+  const orcamento = await prisma.orcamento.findUnique({
+    where: { id: orcamentoId },
+    include: {
+      empresa: { select: { nome: true, logoUrl: true } },
+      lead: { select: { nome: true, telefone: true, email: true } },
+      plano: { select: { nome: true, periodicidade: true } },
+      criadoPor: { select: { nome: true } },
+    },
+  });
+  if (!orcamento || orcamento.empresaId !== empresaId) return null;
+
+  const m = await carregarModeloProposta(empresaId);
+  return montarDadosProposta(m, {
+    empresaNome: orcamento.empresa.nome,
+    empresaLogoUrl: orcamento.empresa.logoUrl,
+    lead: orcamento.lead,
+    consultorNome: orcamento.criadoPor?.nome ?? null,
+    valor: decimalParaNumero(orcamento.valor),
+    periodicidadeLabel: orcamento.plano ? PERIODICIDADE_LABEL[orcamento.plano.periodicidade] ?? "" : "",
+    planoNome: orcamento.plano?.nome ?? null,
+    criadoEm: orcamento.criadoEm,
+    observacoes: orcamento.observacoes,
+  });
+}
+
+/**
+ * Monta uma proposta de exemplo (dados fictícios de cliente/valor, mas com a
+ * marca/logo real da empresa) pra pré-visualizar o modelo sendo editado
+ * antes de salvar — ver botão "Prévia" em ModeloPropostaDialog. Não lê nada
+ * do banco além da empresa, já que o `modelo` vem direto do formulário
+ * (ainda não salvo).
+ */
+export async function construirPropostaExemplo(empresaId: string, modelo: ModeloProposta): Promise<DadosPropostaPdf | null> {
+  const empresa = await prisma.empresa.findUnique({ where: { id: empresaId }, select: { nome: true, logoUrl: true } });
+  if (!empresa) return null;
+
+  return montarDadosProposta(modelo, {
+    empresaNome: empresa.nome,
+    empresaLogoUrl: empresa.logoUrl,
+    lead: { nome: "Cliente Exemplo", telefone: "5519999999999", email: "cliente@exemplo.com" },
+    consultorNome: null,
+    valor: 1997,
+    periodicidadeLabel: "/mês",
+    planoNome: "Plano Exemplo",
+    criadoEm: new Date(),
+    observacoes: "Esse texto de exemplo mostra como fica o diagnóstico quando o campo está vazio no modelo.",
+  });
 }
