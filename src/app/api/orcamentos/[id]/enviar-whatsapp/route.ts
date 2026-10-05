@@ -6,8 +6,8 @@ import {
   isEmpresaContextResponse,
 } from "@/lib/apiAuth";
 import { prisma } from "@/lib/db";
-import { carregarOrcamentoParaPdf } from "@/lib/orcamentos";
-import { gerarOrcamentoPdf } from "@/lib/pdf/orcamentoPdf";
+import { carregarPropostaParaPdf } from "@/lib/propostaComercial";
+import { gerarPropostaPdf } from "@/lib/pdf/propostaPdf";
 import { getWhatsAppProvider } from "@/lib/whatsapp/provider";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -25,7 +25,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ erro: "Orçamento não encontrado" }, { status: 404 });
   }
 
-  const dados = await carregarOrcamentoParaPdf(id, ctx.empresaId);
+  const dados = await carregarPropostaParaPdf(id, ctx.empresaId);
   if (!dados) return NextResponse.json({ erro: "Orçamento não encontrado" }, { status: 404 });
 
   const provider = await getWhatsAppProvider(ctx.empresaId);
@@ -36,11 +36,11 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     );
   }
 
-  const pdf = await gerarOrcamentoPdf(dados);
+  const pdf = await gerarPropostaPdf(dados);
   const resultado = await provider.enviarDocumento(
     orcamento.lead.telefone,
     pdf.toString("base64"),
-    `orcamento-${dados.lead.nome.replace(/\s+/g, "-").toLowerCase()}.pdf`,
+    `proposta-${dados.lead.nome.replace(/\s+/g, "-").toLowerCase()}.pdf`,
     "application/pdf"
   );
 

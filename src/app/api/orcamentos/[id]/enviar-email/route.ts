@@ -6,8 +6,8 @@ import {
   isEmpresaContextResponse,
 } from "@/lib/apiAuth";
 import { prisma } from "@/lib/db";
-import { carregarOrcamentoParaPdf } from "@/lib/orcamentos";
-import { gerarOrcamentoPdf } from "@/lib/pdf/orcamentoPdf";
+import { carregarPropostaParaPdf } from "@/lib/propostaComercial";
+import { gerarPropostaPdf } from "@/lib/pdf/propostaPdf";
 import { enviarEmailComAnexo } from "@/lib/gmail";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -31,15 +31,15 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const usuario = await prisma.usuario.findUnique({ where: { id: session.id } });
   if (!usuario) return NextResponse.json({ erro: "Usuário não encontrado" }, { status: 404 });
 
-  const dados = await carregarOrcamentoParaPdf(id, ctx.empresaId);
+  const dados = await carregarPropostaParaPdf(id, ctx.empresaId);
   if (!dados) return NextResponse.json({ erro: "Orçamento não encontrado" }, { status: 404 });
 
-  const pdf = await gerarOrcamentoPdf(dados);
+  const pdf = await gerarPropostaPdf(dados);
   const resultado = await enviarEmailComAnexo(usuario, {
     para: orcamento.lead.email,
-    assunto: `Orçamento — ${dados.empresaNome}`,
-    corpo: `Olá, ${dados.lead.nome}!\n\nSegue em anexo o orçamento conversado.\n\nQualquer dúvida, é só responder este e-mail.\n\n${dados.empresaNome}`,
-    anexoNome: `orcamento-${dados.lead.nome.replace(/\s+/g, "-").toLowerCase()}.pdf`,
+    assunto: `Proposta comercial — ${dados.empresaNome}`,
+    corpo: `Olá, ${dados.lead.nome}!\n\nSegue em anexo a proposta comercial conversada.\n\nQualquer dúvida, é só responder este e-mail.\n\n${dados.empresaNome}`,
+    anexoNome: `proposta-${dados.lead.nome.replace(/\s+/g, "-").toLowerCase()}.pdf`,
     anexoBuffer: pdf,
     anexoMimeType: "application/pdf",
   });

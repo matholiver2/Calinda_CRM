@@ -3,18 +3,17 @@
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR, { mutate } from "swr";
-import { Plus, Download, MessageCircle, Mail, FileText, Save, Pencil, Sparkles } from "lucide-react";
+import { Plus, Download, MessageCircle, Mail, FileText, Save, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select, Textarea, Input } from "@/components/ui/Input";
 import { Dialog } from "@/components/ui/Dialog";
-import { fetcher, apiPost, ApiError } from "@/lib/fetcher";
+import { fetcher, apiPost, apiDelete, ApiError } from "@/lib/fetcher";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Orcamento, Plano, Lead } from "@/types";
-import { ModeloBlocosEditor } from "@/components/features/orcamentos/ModeloBlocosEditor";
 import { ModeloPropostaDialog } from "@/components/features/orcamentos/ModeloPropostaDialog";
 
 function formatarMoeda(valor: number): string {
@@ -36,10 +35,19 @@ function OrcamentosConteudo() {
   const { data } = useSWR<{ orcamentos: Orcamento[] }>("/api/orcamentos", fetcher, { refreshInterval: 15000 });
   const [criando, setCriando] = useState(!!leadIdInicial);
   const [editandoModelo, setEditandoModelo] = useState(false);
-  const [editandoModeloProposta, setEditandoModeloProposta] = useState(false);
   const [enviandoId, setEnviandoId] = useState<string | null>(null);
 
   const orcamentos = data?.orcamentos ?? [];
+
+  async function excluir(id: string) {
+    if (!confirm("Excluir este orçamento? Essa ação não pode ser desfeita.")) return;
+    try {
+      await apiDelete(`/api/orcamentos/${id}`);
+      mutate("/api/orcamentos");
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Erro ao excluir orçamento");
+    }
+  }
 
   async function enviar(id: string, canal: "whatsapp" | "email") {
     setEnviandoId(`${id}-${canal}`);
@@ -63,9 +71,6 @@ function OrcamentosConteudo() {
           <>
             <Button variant="secondary" onClick={() => setEditandoModelo(true)}>
               <Pencil className="h-4 w-4" /> Editar modelo
-            </Button>
-            <Button variant="secondary" onClick={() => setEditandoModeloProposta(true)}>
-              <Sparkles className="h-4 w-4" /> Modelo de proposta
             </Button>
             <Button onClick={() => setCriando(true)}>
               <Plus className="h-4 w-4" /> Novo orçamento
@@ -113,15 +118,6 @@ function OrcamentosConteudo() {
                   >
                     <Download className="h-4 w-4" />
                   </a>
-                  <a
-                    href={`/api/orcamentos/${o.id}/proposta-pdf`}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Baixar proposta comercial"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </a>
                   <button
                     onClick={() => enviar(o.id, "whatsapp")}
                     disabled={enviandoId === `${o.id}-whatsapp`}
@@ -137,6 +133,13 @@ function OrcamentosConteudo() {
                     className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-accent-soft hover:text-accent disabled:opacity-50"
                   >
                     <Mail className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => excluir(o.id)}
+                    title="Excluir orçamento"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-danger/10 hover:text-danger"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </Card>
@@ -180,15 +183,6 @@ function OrcamentosConteudo() {
                         >
                           <Download className="h-4 w-4" />
                         </a>
-                        <a
-                          href={`/api/orcamentos/${o.id}/proposta-pdf`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title="Baixar proposta comercial"
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-surface-hover hover:text-fg-muted"
-                        >
-                          <Sparkles className="h-4 w-4" />
-                        </a>
                         <button
                           onClick={() => enviar(o.id, "whatsapp")}
                           disabled={enviandoId === `${o.id}-whatsapp`}
@@ -205,6 +199,13 @@ function OrcamentosConteudo() {
                         >
                           <Mail className="h-4 w-4" />
                         </button>
+                        <button
+                          onClick={() => excluir(o.id)}
+                          title="Excluir orçamento"
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-fg-subtle hover:bg-danger/10 hover:text-danger"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -217,8 +218,7 @@ function OrcamentosConteudo() {
       )}
 
       <NovoOrcamentoDialog open={criando} leadIdInicial={leadIdInicial} onClose={() => setCriando(false)} />
-      <ModeloBlocosEditor open={editandoModelo} onClose={() => setEditandoModelo(false)} />
-      <ModeloPropostaDialog open={editandoModeloProposta} onClose={() => setEditandoModeloProposta(false)} />
+      <ModeloPropostaDialog open={editandoModelo} onClose={() => setEditandoModelo(false)} />
     </div>
   );
 }
@@ -232,8 +232,25 @@ function NovoOrcamentoDialog({
   leadIdInicial: string;
   onClose: () => void;
 }) {
-  const { data: leadsData } = useSWR<{ leads: Lead[] }>(open ? "/api/leads" : null, fetcher);
-  const { data: planosData } = useSWR<{ planos: Plano[] }>(open ? "/api/planos" : null, fetcher);
+  return (
+    <Dialog open={open} onClose={onClose} title="Novo orçamento">
+      {open && <NovoOrcamentoForm leadIdInicial={leadIdInicial} onClose={onClose} />}
+    </Dialog>
+  );
+}
+
+// Componente separado, só montado enquanto o modal está aberto — fechar
+// (inclusive por "Cancelar") desmonta e descarta todo o estado do
+// formulário. Antes o form vivia sempre montado (só escondido via `if
+// (!open) return null` DEPOIS dos hooks), então cliente/plano/valor
+// selecionados ficavam presos no state entre uma abertura e outra: ao
+// cancelar e abrir "Novo orçamento" de novo, os campos antigos reapareciam
+// pré-preenchidos, dando a impressão de que o cancelar tinha "entrado algo
+// na lista" quando na really era um orçamento novo sendo salvo sem querer
+// com dados da tentativa anterior.
+function NovoOrcamentoForm({ leadIdInicial, onClose }: { leadIdInicial: string; onClose: () => void }) {
+  const { data: leadsData } = useSWR<{ leads: Lead[] }>("/api/leads", fetcher);
+  const { data: planosData } = useSWR<{ planos: Plano[] }>("/api/planos", fetcher);
 
   const [leadId, setLeadId] = useState(leadIdInicial);
   const [planoId, setPlanoId] = useState("");
@@ -245,8 +262,6 @@ function NovoOrcamentoDialog({
   const leads = leadsData?.leads ?? [];
   const planos = (planosData?.planos ?? []).filter((p) => p.ativo);
 
-  if (!open) return null;
-
   function selecionarPlano(id: string) {
     setPlanoId(id);
     const plano = planos.find((p) => p.id === id);
@@ -254,7 +269,6 @@ function NovoOrcamentoDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="Novo orçamento">
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -312,6 +326,5 @@ function NovoOrcamentoDialog({
           </Button>
         </div>
       </form>
-    </Dialog>
   );
 }

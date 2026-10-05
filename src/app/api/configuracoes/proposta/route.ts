@@ -18,6 +18,7 @@ export async function GET() {
   return NextResponse.json({ modelo });
 }
 
+/** Aceita atualização parcial (merge raso com o modelo salvo) — o editor manda só a aba que foi alterada. */
 export async function PATCH(req: Request) {
   const session = await requireSession();
   if (isSessionResponse(session)) return session;
@@ -30,15 +31,7 @@ export async function PATCH(req: Request) {
   if (!body) return NextResponse.json({ erro: "Corpo inválido" }, { status: 400 });
 
   const atual = await carregarModeloProposta(ctx.empresaId);
-  const atualizado: ModeloProposta = {
-    diagnostico: body.diagnostico ?? atual.diagnostico,
-    deliverables: Array.isArray(body.deliverables) ? body.deliverables : atual.deliverables,
-    garantia: body.garantia ?? atual.garantia,
-    urgencia: body.urgencia ?? atual.urgencia,
-    fechamento: body.fechamento ?? atual.fechamento,
-    corDestaque: body.corDestaque ?? atual.corDestaque,
-    validadeDias: body.validadeDias ?? atual.validadeDias,
-  };
+  const atualizado: ModeloProposta = { ...atual, ...body };
   await salvarModeloProposta(ctx.empresaId, atualizado);
   return NextResponse.json({ ok: true, modelo: atualizado });
 }
