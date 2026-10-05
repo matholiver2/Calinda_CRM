@@ -309,7 +309,12 @@ function VendaFormDialog({ open, venda, onClose }: { open: boolean; venda: Venda
               await apiPost("/api/vendas", campos(false));
             }
             mutate("/api/vendas");
-            mutate("/api/dashboard/vendas-resumo");
+            // A chave real no cache do dashboard inclui o período
+            // (/api/dashboard/vendas-resumo?periodo=N) — mutate com a string
+            // sem o query param não batia com nada e o card "Faturamento do
+            // Mês" só atualizava depois do poll de 30s. Matcher por função
+            // invalida qualquer período aberto.
+            mutate((key) => typeof key === "string" && key.startsWith("/api/dashboard/vendas-resumo"));
             fecharSemRascunho.current = true;
             onClose();
           } catch (err) {
