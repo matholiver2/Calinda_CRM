@@ -86,6 +86,7 @@ export type LeadParaImportar = {
   telefone: string;
   email: string | null;
   origem: string | null;
+  endereco: string | null;
   observacoes: string | null;
 };
 
@@ -94,6 +95,7 @@ const ALIASES = {
   telefone: ["telefone", "fone", "celular", "whatsapp", "phone", "numero", "número"],
   email: ["email", "e-mail", "mail"],
   origem: ["origem", "origin", "fonte", "canal"],
+  endereco: ["endereco", "endereço", "address", "localizacao", "localização"],
   observacoes: ["observacoes", "observações", "obs", "notas", "notes"],
 };
 
@@ -119,6 +121,7 @@ export function mapearLinhasParaLeads(linhas: LinhaCsv[]): { validos: LeadParaIm
       telefone,
       email: acharColuna(linha, ALIASES.email).trim() || null,
       origem: acharColuna(linha, ALIASES.origem).trim() || null,
+      endereco: acharColuna(linha, ALIASES.endereco).trim() || null,
       observacoes: acharColuna(linha, ALIASES.observacoes).trim() || null,
     });
   }
@@ -127,5 +130,5 @@ export function mapearLinhasParaLeads(linhas: LinhaCsv[]): { validos: LeadParaIm
 }
 
 export function gerarCsvModelo(): string {
-  return "nome,telefone,email,origem,observacoes\nMaria Silva,+5511999999999,maria@email.com,Indicação,Cliente antiga\n";
+  return "nome,telefone,email,origem,endereco,observacoes\nMaria Silva,+5511999999999,maria@email.com,Indicação,\"Rua Exemplo, 123 - Centro\",Cliente antiga\n";
 }

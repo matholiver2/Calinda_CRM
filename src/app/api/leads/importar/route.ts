@@ -14,6 +14,7 @@ type LinhaImportacao = {
   telefone?: string;
   email?: string | null;
   origem?: string | null;
+  endereco?: string | null;
   observacoes?: string | null;
 };
 
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
           telefone,
           email: linha.email?.trim() || null,
           origem: linha.origem?.trim() || "Importação de planilha",
+          endereco: linha.endereco?.trim() || null,
           observacoes: linha.observacoes?.trim() || null,
           status,
           etapaAtualId: primeiraEtapa.id,

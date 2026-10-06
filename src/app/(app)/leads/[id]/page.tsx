@@ -138,6 +138,8 @@ export default function LeadDetalhePage({ params }: { params: Promise<{ id: stri
 
           <InstagramSiteCard leadId={id} valorInicial={lead.instagramSite} />
 
+          <EnderecoCard leadId={id} valorInicial={lead.endereco} />
+
           <PerfilFollowUpCard leadId={id} valorInicial={lead.perfilFollowUp} />
 
           <ObservacoesCard leadId={id} observacoesIniciais={lead.observacoes} />
@@ -227,6 +229,43 @@ function InstagramSiteCard({ leadId, valorInicial }: { leadId: string; valorInic
           value={valor}
           onChange={(e) => setValor(e.target.value)}
           placeholder="@perfil ou site.com.br"
+          className="w-full rounded-[10px] border border-border bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-accent"
+        />
+        {sucesso && <span className="shrink-0 text-xs text-success">Salvo</span>}
+        <Button variant="secondary" size="sm" loading={salvando} onClick={salvar}>
+          <Save className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+function EnderecoCard({ leadId, valorInicial }: { leadId: string; valorInicial: string | null }) {
+  const [valor, setValor] = useState(valorInicial ?? "");
+  const [salvando, setSalvando] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
+
+  async function salvar() {
+    setSalvando(true);
+    setSucesso(false);
+    try {
+      await apiPatch(`/api/leads/${leadId}`, { endereco: valor });
+      mutate(`/api/leads/${leadId}`);
+      setSucesso(true);
+      setTimeout(() => setSucesso(false), 2000);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <h2 className="mb-3 text-sm font-semibold text-fg">Endereço</h2>
+      <div className="flex items-center gap-2">
+        <input
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
+          placeholder="Rua, número - bairro, cidade - UF"
           className="w-full rounded-[10px] border border-border bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-accent"
         />
         {sucesso && <span className="shrink-0 text-xs text-success">Salvo</span>}

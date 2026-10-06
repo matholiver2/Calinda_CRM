@@ -121,9 +121,9 @@ function ImportarForm({
   return (
     <div className="space-y-4">
       <p className="text-sm text-fg-subtle">
-        Envie um arquivo CSV com pelo menos as colunas <strong>nome</strong> e <strong>telefone</strong> (email, origem
-        e observações são opcionais). Se sua planilha é .xlsx, exporte/salve como CSV antes (Excel/Sheets: Arquivo →
-        Salvar como → CSV).
+        Envie um arquivo CSV com pelo menos as colunas <strong>nome</strong> e <strong>telefone</strong> (email, origem,
+        endereço e observações são opcionais). Se sua planilha é .xlsx, exporte/salve como CSV antes (Excel/Sheets:
+        Arquivo → Salvar como → CSV).
       </p>
 
       <button
@@ -168,7 +168,7 @@ function ImportarForm({
                 <tr className="border-b border-border text-left text-fg-subtle">
                   <th className="px-2.5 py-1.5 font-medium">Nome</th>
                   <th className="px-2.5 py-1.5 font-medium">Telefone</th>
-                  <th className="px-2.5 py-1.5 font-medium">E-mail</th>
+                  <th className="px-2.5 py-1.5 font-medium">Endereço</th>
                 </tr>
               </thead>
               <tbody>
@@ -176,7 +176,7 @@ function ImportarForm({
                   <tr key={i} className="border-b border-border last:border-0">
                     <td className="truncate px-2.5 py-1.5 text-fg">{l.nome}</td>
                     <td className="px-2.5 py-1.5 text-fg-muted">{l.telefone}</td>
-                    <td className="truncate px-2.5 py-1.5 text-fg-muted">{l.email ?? "—"}</td>
+                    <td className="truncate px-2.5 py-1.5 text-fg-muted">{l.endereco ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>

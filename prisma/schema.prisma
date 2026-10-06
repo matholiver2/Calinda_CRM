@@ -295,6 +295,7 @@ model Lead {
   // (iaAtiva=true de novo) limpa esse campo.
   humanTakeoverEm DateTime? @map("human_takeover_em")
   instagramSite String?    @map("instagram_site")
+  endereco     String?    @db.Text
   observacoes  String?    @db.Text
   grupoId      String?    @map("grupo_id")
   grupo        GrupoCliente? @relation(fields: [grupoId], references: [id], onDelete: SetNull)

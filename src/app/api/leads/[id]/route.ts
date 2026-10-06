@@ -57,6 +57,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       observacoes: body?.observacoes !== undefined ? body.observacoes || null : undefined,
       grupoId: body?.grupoId !== undefined ? body.grupoId || null : undefined,
       instagramSite: body?.instagramSite !== undefined ? body.instagramSite || null : undefined,
+      endereco: body?.endereco !== undefined ? body.endereco || null : undefined,
       perfilFollowUp:
         body?.perfilFollowUp !== undefined
           ? (["a", "b", "c"].includes(body.perfilFollowUp) ? body.perfilFollowUp : null)

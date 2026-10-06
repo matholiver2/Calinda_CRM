@@ -13,9 +13,16 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-06",
+    titulo: "Campo de endereço no lead/cliente",
+    itens: [
+      "Leads e clientes agora têm um campo de endereço próprio (editável na página do cliente), que também pode vir preenchido direto na importação por planilha.",
+    ],
+  },
+  {
+    data: "2026-10-06",
     titulo: "Importar leads e clientes por planilha",
     itens: [
-      "Novo botão \"Importar planilha\" nas telas de Leads e Clientes — suba um CSV com nome, telefone (e opcionalmente e-mail, origem, observações) e crie vários registros de uma vez.",
+      "Novo botão \"Importar planilha\" nas telas de Leads e Clientes — suba um CSV com nome, telefone (e opcionalmente e-mail, origem, endereço, observações) e crie vários registros de uma vez.",
       "Mostra uma prévia antes de importar, ignora linhas sem nome/telefone e pula duplicados (mesmo telefone já cadastrado) automaticamente.",
       "Você escolhe se a IA manda a primeira mensagem pros importados ou se eles só ficam cadastrados — desligado por padrão, pensado pra planilhas de contatos já existentes.",
       "Planilhas .xlsx: exporte como CSV antes de importar (um clique no Excel/Sheets).",

@@ -40,6 +40,7 @@ export type Lead = {
   iaAtiva: boolean;
   humanTakeoverEm: string | null;
   instagramSite: string | null;
+  endereco: string | null;
   perfilFollowUp: "a" | "b" | "c" | null;
   entrouEm: string;
   atualizadoEm: string;
