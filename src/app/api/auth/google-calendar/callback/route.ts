@@ -17,8 +17,10 @@ export async function GET(req: Request) {
     .find((c) => c.startsWith(`${GOOGLE_STATE_COOKIE}=`))
     ?.split("=")[1];
 
-  const falhar = (motivo: string) =>
-    NextResponse.redirect(`${url.origin}/configuracoes?tab=integracoes&erro=${motivo}`);
+  const falhar = (motivo: string, detalhe?: string) =>
+    NextResponse.redirect(
+      `${url.origin}/configuracoes?tab=integracoes&erro=${motivo}${detalhe ? `&detalhe=${encodeURIComponent(detalhe)}` : ""}`
+    );
 
   if (!code || !state || !cookieState || state !== cookieState) {
     return falhar("google_estado_invalido");
@@ -52,6 +54,6 @@ export async function GET(req: Request) {
     return res;
   } catch (err) {
     console.error("[auth/google-calendar/callback]", err);
-    return falhar("google_erro");
+    return falhar("google_erro", err instanceof Error ? err.message : "erro desconhecido");
   }
 }

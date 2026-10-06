@@ -45,6 +45,7 @@ export default function ConfiguracoesPage() {
 
   const googleConectado = searchParams.get("calendario") === "conectado";
   const googleErro = searchParams.get("erro");
+  const googleErroDetalhe = searchParams.get("detalhe");
 
   return (
     <div>
@@ -56,9 +57,12 @@ export default function ConfiguracoesPage() {
         </div>
       )}
       {googleErro && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
-          <CircleAlert className="h-4 w-4 shrink-0" />
-          {ERRO_GOOGLE_LABEL[googleErro] ?? "Não foi possível conectar com o Google."}
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
+          <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p>{ERRO_GOOGLE_LABEL[googleErro] ?? "Não foi possível conectar com o Google."}</p>
+            {googleErroDetalhe && <p className="mt-0.5 text-xs opacity-75">Detalhe técnico: {googleErroDetalhe}</p>}
+          </div>
         </div>
       )}
 
