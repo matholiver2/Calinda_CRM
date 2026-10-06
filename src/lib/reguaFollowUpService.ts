@@ -1,11 +1,23 @@
 import { prisma, comRetryConexao } from "@/lib/db";
 import { enviarEAtualizarStatus } from "@/lib/conversationService";
-import { gerarMensagemComBase } from "@/lib/ai/engine";
+import { gerarMensagemComBase, type MensagemContexto } from "@/lib/ai/engine";
 import { criarNotificacao } from "@/lib/notificacoes";
 import type { TipoFollowUp, ReguaFollowUp } from "@prisma/client";
 
 function interpolar(texto: string, leadNome: string, empresaNome: string): string {
   return texto.replaceAll("{nome}", leadNome.split(" ")[0]).replaceAll("{empresa}", empresaNome);
+}
+
+async function historicoDoLead(leadId: string): Promise<MensagemContexto[]> {
+  const mensagens = await comRetryConexao(() =>
+    prisma.mensagem.findMany({
+      where: { leadId },
+      orderBy: { enviadoEm: "desc" },
+      take: 20,
+      select: { remetente: true, conteudo: true },
+    })
+  );
+  return mensagens.reverse();
 }
 
 /**
@@ -92,25 +104,57 @@ async function executarMarcoRegua(
             tarefa: `uma mensagem de follow-up do tipo "${tipo.nome}"${tipo.objetivo ? ` (${tipo.objetivo})` : ""}`,
             leadNome: lead.nome,
             persona: `Você representa a ${lead.empresa.nome}.`,
+            historico: await historicoDoLead(lead.id),
           })
         : interpolar(tipo.scriptModelo, lead.nome, lead.empresa.nome);
 
     const mensagem = await prisma.mensagem.create({
       data: { leadId: lead.id, remetente: "ia", conteudo: texto, statusEntrega: "enviado" },
     });
-    await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, texto);
-  } else {
-    // Canal manual (ligação, visita) — não dá pra automatizar de verdade,
-    // então vira um lembrete pro vendedor agir, com o roteiro como apoio.
-    await criarNotificacao(lead.empresaId, {
-      tipo: "regua_follow_up",
-      titulo: `Follow-up devido: ${tipo.nome} — ${lead.nome}`,
-      corpo: `${tipo.objetivo ? `${tipo.objetivo}\n\n` : ""}${tipo.scriptModelo}`,
-      leadId: lead.id,
+    const resultado = await enviarEAtualizarStatus(mensagem.id, lead.empresaId, lead.telefone, texto);
+
+    // Se o envio automático falhou (WhatsApp desconectado, worker fora do
+    // ar...), a mensagem já foi escrita — vira uma pendência em Follow-up
+    // pro vendedor mandar manualmente (sistema ou link do WhatsApp) em vez
+    // de só sumir numa notificação.
+    await prisma.followUpReguaEnvio.create({
+      data: {
+        leadId: lead.id,
+        reguaId: regua.id,
+        tipoFollowUpId: tipo.id,
+        mensagemGerada: texto,
+        status: resultado.status === "falhou" ? "pendente" : "enviado",
+      },
     });
+    return;
   }
 
+  // Canal manual (ligação, visita) — não dá pra automatizar o contato em si,
+  // mas a IA escreve a mensagem/roteiro usando o script do tipo como base e
+  // o histórico de conversa do cliente, pra ficar pronta pro vendedor revisar
+  // e mandar (sistema ou link do WhatsApp) em Follow-up → Pendentes.
+  const texto = await gerarMensagemComBase({
+    baseTexto: tipo.scriptModelo,
+    tarefa: `uma mensagem de follow-up do tipo "${tipo.nome}"${tipo.objetivo ? ` (${tipo.objetivo})` : ""}, que o vendedor vai revisar e mandar manualmente`,
+    leadNome: lead.nome,
+    persona: `Você representa a ${lead.empresa.nome}.`,
+    historico: await historicoDoLead(lead.id),
+  });
+
+  await criarNotificacao(lead.empresaId, {
+    tipo: "regua_follow_up",
+    titulo: `Follow-up devido: ${tipo.nome} — ${lead.nome}`,
+    corpo: texto.length > 140 ? `${texto.slice(0, 140)}…` : texto,
+    leadId: lead.id,
+  });
+
   await prisma.followUpReguaEnvio.create({
-    data: { leadId: lead.id, reguaId: regua.id, tipoFollowUpId: tipo.id },
+    data: {
+      leadId: lead.id,
+      reguaId: regua.id,
+      tipoFollowUpId: tipo.id,
+      mensagemGerada: texto,
+      status: "pendente",
+    },
   });
 }

@@ -13,6 +13,15 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-06",
+    titulo: "IA escreve a mensagem dos follow-ups pendentes da régua",
+    itens: [
+      "Nova aba \"Pendentes\" em Follow-up: toda vez que um marco da régua é do tipo manual (ligação/visita) ou uma mensagem automática falha ao enviar pelo WhatsApp, a IA escreve a mensagem (com base no script do tipo de follow-up e no histórico de conversa do cliente) pra você revisar.",
+      "Dois botões em cada pendência: \"Enviar pelo sistema\" (manda pelo WhatsApp conectado) ou \"Abrir no WhatsApp\" (abre o wa.me com o número e a mensagem já prontos, pra mandar manualmente) — dá pra editar o texto antes de qualquer um dos dois.",
+      "A aba Pendentes mostra um contador em destaque quando há follow-ups esperando ação.",
+    ],
+  },
+  {
+    data: "2026-10-06",
     titulo: "Intervalo de follow-up simples movido pra tela de Follow-up",
     itens: [
       "O campo \"Intervalo de follow-up\" saiu de Configurar IA e agora fica só na tela Follow-up (aba Tipos de Follow-up), junto do resto das configurações de follow-up.",

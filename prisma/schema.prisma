@@ -610,6 +610,16 @@ model ReguaFollowUp {
   @@map("reguas_follow_up")
 }
 
+// Status de um marco da régua já processado: "enviado" (canal automático,
+// mandou de verdade pelo WhatsApp), "pendente" (canal manual, ou automático
+// que falhou ao enviar — precisa de ação do vendedor em Follow-up →
+// Pendentes) e "descartado" (vendedor dispensou sem enviar).
+enum FollowUpReguaEnvioStatus {
+  enviado
+  pendente
+  descartado
+}
+
 // Registro de que um marco da régua já foi executado pra um cliente — evita
 // reenviar o mesmo follow-up em todo ciclo do poller (ver
 // src/lib/reguaFollowUpService.ts).
@@ -622,6 +632,11 @@ model FollowUpReguaEnvio {
   tipoFollowUpId String        @map("tipo_follow_up_id")
   tipoFollowUp   TipoFollowUp  @relation(fields: [tipoFollowUpId], references: [id], onDelete: Cascade)
   executadoEm    DateTime      @default(now()) @map("executado_em")
+  // Mensagem que a IA escreveu pra esse marco (com base no script do tipo +
+  // histórico de conversa do cliente) — mostrada em Follow-up → Pendentes
+  // quando o envio não foi automático (canal manual) ou falhou.
+  mensagemGerada String?                  @db.Text @map("mensagem_gerada")
+  status         FollowUpReguaEnvioStatus @default(enviado)
 
   @@unique([leadId, reguaId])
   @@map("follow_up_regua_envios")

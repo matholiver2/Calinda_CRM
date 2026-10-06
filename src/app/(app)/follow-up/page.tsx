@@ -4,7 +4,23 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
-import { Plus, Trash2, Pencil, Sparkles, Phone, MessageCircle, Repeat2, MessageCirclePlus, MessageSquareText, CalendarClock, Save } from "lucide-react";
+import {
+  Plus,
+  Trash2,
+  Pencil,
+  Sparkles,
+  Phone,
+  MessageCircle,
+  Repeat2,
+  MessageCirclePlus,
+  MessageSquareText,
+  CalendarClock,
+  Save,
+  Send,
+  ExternalLink,
+  X,
+  Sparkle,
+} from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -13,7 +29,7 @@ import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input, Select, Textarea } from "@/components/ui/Input";
 import { ChatThread } from "@/components/features/ChatThread";
-import { cn } from "@/lib/utils";
+import { cn, normalizarTelefone } from "@/lib/utils";
 import { fetcher, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/fetcher";
 import type { Lead } from "@/types";
 
@@ -48,9 +64,19 @@ const PERIODICIDADES = [
   { id: "anual" as const, label: "Anual" },
 ];
 
-type AbaId = "tipos" | "regua" | "remarketing";
+type Pendencia = {
+  id: string;
+  mensagemGerada: string | null;
+  executadoEm: string;
+  lead: { id: string; nome: string; telefone: string; status: string };
+  tipoFollowUp: { id: string; nome: string; objetivo: string | null; canal: "automatico" | "manual" };
+  regua: { diaOffset: number; perfil: "a" | "b" | "c"; periodicidade: "trimestral" | "semestral" | "anual" };
+};
+
+type AbaId = "pendentes" | "tipos" | "regua" | "remarketing";
 
 const TABS: { id: AbaId; label: string }[] = [
+  { id: "pendentes", label: "Pendentes" },
   { id: "tipos", label: "Tipos de Follow-up" },
   { id: "regua", label: "Régua de Relacionamento" },
   { id: "remarketing", label: "Remarketing" },
@@ -68,6 +94,10 @@ function FollowUpConteudo() {
   const searchParams = useSearchParams();
   const abaInicial = TABS.find((t) => t.id === searchParams.get("tab"))?.id ?? "tipos";
   const [aba, setAba] = useState<AbaId>(abaInicial);
+  const { data: pendentesData } = useSWR<{ pendencias: Pendencia[] }>("/api/follow-up/pendentes", fetcher, {
+    refreshInterval: 30000,
+  });
+  const totalPendentes = pendentesData?.pendencias.length ?? 0;
 
   return (
     <div>
@@ -82,19 +112,162 @@ function FollowUpConteudo() {
             key={t.id}
             onClick={() => setAba(t.id)}
             className={cn(
-              "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors",
               aba === t.id ? "bg-accent-soft text-accent" : "text-fg-muted hover:bg-surface-hover"
             )}
           >
             {t.label}
+            {t.id === "pendentes" && totalPendentes > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-[11px] font-semibold text-white">
+                {totalPendentes}
+              </span>
+            )}
           </button>
         ))}
       </div>
 
+      {aba === "pendentes" && <AbaPendentes />}
       {aba === "tipos" && <AbaTipos />}
       {aba === "regua" && <AbaRegua />}
       {aba === "remarketing" && <AbaRemarketing />}
     </div>
+  );
+}
+
+const PERFIL_LABEL: Record<"a" | "b" | "c", string> = { a: "A", b: "B", c: "C" };
+const PERIODICIDADE_LABEL: Record<"trimestral" | "semestral" | "anual", string> = {
+  trimestral: "Trimestral",
+  semestral: "Semestral",
+  anual: "Anual",
+};
+
+function AbaPendentes() {
+  const { data, mutate: mutatePendentes } = useSWR<{ pendencias: Pendencia[] }>("/api/follow-up/pendentes", fetcher);
+  const pendencias = data?.pendencias ?? [];
+
+  if (pendencias.length === 0) {
+    return (
+      <Card className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-hover text-fg-subtle">
+          <MessageCircle className="h-6 w-6" />
+        </div>
+        <p className="text-sm font-medium text-fg">Nenhum follow-up pendente</p>
+        <p className="max-w-sm text-sm text-fg-subtle">
+          Quando um marco da régua for do tipo manual (ligação/visita) ou um envio automático falhar, a IA escreve a
+          mensagem aqui pra você revisar e mandar.
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {pendencias.map((p) => (
+        <PendenciaCard key={p.id} pendencia={p} onResolvida={() => mutatePendentes()} />
+      ))}
+    </div>
+  );
+}
+
+function PendenciaCard({ pendencia, onResolvida }: { pendencia: Pendencia; onResolvida: () => void }) {
+  const [texto, setTexto] = useState(pendencia.mensagemGerada ?? "");
+  const [enviando, setEnviando] = useState<"sistema" | "manual" | "descartar" | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+
+  const numero = normalizarTelefone(pendencia.lead.telefone);
+
+  async function enviarPeloSistema() {
+    setErro(null);
+    setEnviando("sistema");
+    try {
+      await apiPost(`/api/follow-up/pendentes/${pendencia.id}/enviar`, { texto });
+      onResolvida();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao enviar");
+    } finally {
+      setEnviando(null);
+    }
+  }
+
+  async function abrirWhatsapp() {
+    if (!numero) {
+      setErro("Esse cliente não tem um telefone válido cadastrado.");
+      return;
+    }
+    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(texto)}`, "_blank");
+    setEnviando("manual");
+    try {
+      await apiPost(`/api/follow-up/pendentes/${pendencia.id}/marcar-enviado`, { texto });
+      onResolvida();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao marcar como enviado");
+    } finally {
+      setEnviando(null);
+    }
+  }
+
+  async function descartar() {
+    if (!confirm("Dispensar esse follow-up sem enviar nada?")) return;
+    setEnviando("descartar");
+    try {
+      await apiPost(`/api/follow-up/pendentes/${pendencia.id}/descartar`);
+      onResolvida();
+    } catch {
+      setErro("Erro ao descartar");
+    } finally {
+      setEnviando(null);
+    }
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="mb-2.5 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <Avatar nome={pendencia.lead.nome} size="sm" />
+          <div>
+            <Link href={`/leads/${pendencia.lead.id}`} className="text-sm font-semibold text-fg hover:underline">
+              {pendencia.lead.nome}
+            </Link>
+            <p className="text-xs text-fg-subtle">
+              {pendencia.tipoFollowUp.nome} · Dia {pendencia.regua.diaOffset} ·{" "}
+              {PERIODICIDADE_LABEL[pendencia.regua.periodicidade]} · Perfil {PERFIL_LABEL[pendencia.regua.perfil]}
+            </p>
+          </div>
+        </div>
+        <Badge color={pendencia.tipoFollowUp.canal === "automatico" ? "#EF4444" : "#F59E0B"}>
+          {pendencia.tipoFollowUp.canal === "automatico" ? "Envio falhou" : "Manual"}
+        </Badge>
+      </div>
+
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] text-fg-subtle">
+        <Sparkle className="h-3 w-3" /> Mensagem escrita pela IA com base no histórico do cliente — revise antes de mandar
+      </div>
+      <Textarea rows={4} value={texto} onChange={(e) => setTexto(e.target.value)} className="text-sm" />
+
+      {erro && <p className="mt-2 text-xs text-danger">{erro}</p>}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button size="sm" loading={enviando === "sistema"} disabled={!!enviando} onClick={enviarPeloSistema}>
+          <Send className="h-3.5 w-3.5" /> Enviar pelo sistema
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          loading={enviando === "manual"}
+          disabled={!!enviando}
+          onClick={abrirWhatsapp}
+        >
+          <ExternalLink className="h-3.5 w-3.5" /> Abrir no WhatsApp
+        </Button>
+        <button
+          onClick={descartar}
+          disabled={!!enviando}
+          className="ml-auto flex items-center gap-1 text-xs text-fg-subtle hover:text-danger disabled:opacity-50"
+        >
+          <X className="h-3 w-3" /> Descartar
+        </button>
+      </div>
+    </Card>
   );
 }
 
