@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
-import { Search, MessageCircle, FileText, Users, Plus, Tag, Save } from "lucide-react";
+import { Search, MessageCircle, FileText, Users, Plus, Tag, Save, CalendarClock } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -16,6 +16,8 @@ import { formatarTelefone } from "@/lib/utils";
 import type { Lead, GrupoCliente } from "@/types";
 
 const CORES_GRUPO = ["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EC4899", "#6B7280"];
+
+const PERFIL_LABEL: Record<string, string> = { a: "A — Estratégico", b: "B — Intermediário", c: "C — Operacional" };
 
 export default function ClientesPage() {
   const { data, mutate: mutateLeads } = useSWR<{ leads: Lead[] }>("/api/leads?status=cliente", fetcher, {
@@ -44,15 +46,27 @@ export default function ClientesPage() {
     mutateLeads();
   }
 
+  async function alterarPerfil(clienteId: string, perfil: string) {
+    await apiPatch(`/api/leads/${clienteId}`, { perfilFollowUp: perfil || null });
+    mutateLeads();
+  }
+
   return (
     <div>
       <PageHeader
         title="Clientes"
         description={`${clientes.length} cliente${clientes.length === 1 ? "" : "s"} na carteira`}
         actions={
-          <Button variant="secondary" size="sm" onClick={() => setCriandoGrupo(true)}>
-            <Plus className="h-3.5 w-3.5" /> Novo grupo
-          </Button>
+          <>
+            <Link href="/follow-up">
+              <Button variant="secondary" size="sm">
+                <CalendarClock className="h-3.5 w-3.5" /> Régua de follow-up
+              </Button>
+            </Link>
+            <Button variant="secondary" size="sm" onClick={() => setCriandoGrupo(true)}>
+              <Plus className="h-3.5 w-3.5" /> Novo grupo
+            </Button>
+          </>
         }
       />
 
@@ -125,7 +139,7 @@ export default function ClientesPage() {
                   <span>{cliente.email ?? "Sem e-mail"}</span>
                   <span>{cliente.vendedor ? cliente.vendedor.nome : "Sem vendedor"}</span>
                 </div>
-                <div className="mt-2.5">
+                <div className="mt-2.5 grid grid-cols-2 gap-1.5">
                   <Select
                     className="!py-1.5 !text-xs"
                     value={cliente.grupoId ?? ""}
@@ -135,6 +149,18 @@ export default function ClientesPage() {
                     {grupos.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.nome}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    className="!py-1.5 !text-xs"
+                    value={cliente.perfilFollowUp ?? ""}
+                    onChange={(e) => alterarPerfil(cliente.id, e.target.value)}
+                  >
+                    <option value="">Sem perfil</option>
+                    {Object.entries(PERFIL_LABEL).map(([v, label]) => (
+                      <option key={v} value={v}>
+                        {label}
                       </option>
                     ))}
                   </Select>
@@ -153,6 +179,7 @@ export default function ClientesPage() {
                   <th className="pb-4 pr-4 font-medium">E-mail</th>
                   <th className="pb-4 pr-4 font-medium">Vendedor</th>
                   <th className="pb-4 pr-4 font-medium">Grupo</th>
+                  <th className="pb-4 pr-4 font-medium">Perfil follow-up</th>
                   <th className="pb-4 font-medium">Ações</th>
                 </tr>
               </thead>
@@ -189,6 +216,20 @@ export default function ClientesPage() {
                         {grupos.map((g) => (
                           <option key={g.id} value={g.id}>
                             {g.nome}
+                          </option>
+                        ))}
+                      </Select>
+                    </td>
+                    <td className="pr-4">
+                      <Select
+                        className="!w-auto !py-1.5 !text-xs"
+                        value={cliente.perfilFollowUp ?? ""}
+                        onChange={(e) => alterarPerfil(cliente.id, e.target.value)}
+                      >
+                        <option value="">Sem perfil</option>
+                        {Object.entries(PERFIL_LABEL).map(([v, label]) => (
+                          <option key={v} value={v}>
+                            {label}
                           </option>
                         ))}
                       </Select>

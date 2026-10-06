@@ -5,7 +5,6 @@ import {
   MessageSquareText,
   CalendarDays,
   Wallet,
-  Repeat2,
   UserCheck,
   FileText,
   BarChart3,
@@ -32,7 +31,6 @@ export const GROUP_B = [
   { href: "/follow-up", label: "Follow-up", icon: CalendarClock },
   { href: "/orcamentos", label: "Orçamentos", icon: FileText },
   { href: "/arquivos", label: "Arquivos", icon: FolderOpen },
-  { href: "/remarketing", label: "Remarketing", icon: Repeat2 },
   { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
   { href: "/novidades", label: "Novidades", icon: Megaphone },
 ];

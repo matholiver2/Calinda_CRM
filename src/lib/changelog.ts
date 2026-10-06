@@ -13,6 +13,14 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-05",
+    titulo: "Perfil de follow-up na tela de Clientes e Remarketing dentro de Follow-up",
+    itens: [
+      "Tela Clientes: agora dá pra classificar cada cliente com o perfil de follow-up (A/B/C) direto na lista, sem precisar abrir o cadastro — é isso que liga o cliente à régua de relacionamento certa.",
+      "Remarketing virou uma aba dentro de Follow-up (mesmas funções de antes) — o link antigo /remarketing continua funcionando e redireciona pra lá.",
+    ],
+  },
+  {
+    data: "2026-10-05",
     titulo: "Exportar relatórios em PDF",
     itens: [
       "Na tela Relatórios, novo botão \"Exportar PDF\" — escolha quais seções entram (conversão por etapa, tempo médio, performance por vendedor, origem dos leads) e gere um PDF com a identidade visual do Calinda.",
