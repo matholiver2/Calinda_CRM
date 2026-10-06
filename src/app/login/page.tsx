@@ -59,7 +59,7 @@ function LoginForm() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <Logo px={120} className="mb-3" />
-          <LogoEscrita heightClassName="h-28" />
+          <LogoEscrita heightClassName="h-[4.2rem]" />
           <p className="mt-1 text-sm text-fg-muted">CRM automatizado com IA</p>
         </div>
 

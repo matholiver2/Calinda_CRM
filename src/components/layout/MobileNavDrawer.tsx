@@ -50,7 +50,7 @@ export function MobileNavDrawer() {
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-2.5">
                 <Logo size="sm" />
-                <LogoEscrita heightClassName="h-[4.5rem]" />
+                <LogoEscrita heightClassName="h-[2.7rem]" />
               </div>
               <button
                 onClick={() => setAberto(false)}
