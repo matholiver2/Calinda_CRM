@@ -66,6 +66,14 @@ async function escolherVendedor(empresaId: string) {
  * corrige pra "falhou" se o provedor não conseguir entregar de verdade —
  * sem isso, uma falha de envio (ex: WhatsApp reconectando) ficava invisível:
  * a mensagem aparecia "enviada" no CRM mesmo sem nunca ter saído.
+ *
+ * Ponto único usado por toda mensagem automática que o sistema manda pro
+ * WhatsApp do lead (resposta da IA, primeira mensagem, finalização,
+ * follow-up simples/agendado, régua de relacionamento, remarketing) — por
+ * isso é também o lugar certo pra notificar o vendedor que uma mensagem saiu
+ * sem ele precisar abrir a conversa pra descobrir. Mensagem manual do
+ * próprio vendedor (remetente "vendedor") não gera notificação — ele já
+ * sabe, acabou de escrever.
  */
 export async function enviarEAtualizarStatus(mensagemId: string, empresaId: string, telefone: string, texto: string) {
   const provider = await getWhatsAppProvider(empresaId);
@@ -74,6 +82,24 @@ export async function enviarEAtualizarStatus(mensagemId: string, empresaId: stri
     await prisma.mensagem.update({ where: { id: mensagemId }, data: { statusEntrega: "falhou" } });
     console.error(`[conversationService] falha ao enviar mensagem ${mensagemId} pro WhatsApp`);
   }
+
+  const mensagem = await prisma.mensagem.findUnique({
+    where: { id: mensagemId },
+    include: { lead: { select: { id: true, nome: true } } },
+  });
+  if (mensagem?.remetente === "ia") {
+    const resumo = texto.length > 140 ? `${texto.slice(0, 140)}…` : texto;
+    void criarNotificacao(empresaId, {
+      tipo: resultado.status === "falhou" ? "whatsapp_falhou" : "whatsapp_enviado",
+      titulo:
+        resultado.status === "falhou"
+          ? `Falha ao enviar WhatsApp pra ${mensagem.lead.nome}`
+          : `Mensagem enviada pra ${mensagem.lead.nome}`,
+      corpo: resumo,
+      leadId: mensagem.lead.id,
+    });
+  }
+
   return resultado;
 }
 

@@ -13,6 +13,13 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-05",
+    titulo: "Notificação toda vez que o sistema manda mensagem pelo WhatsApp",
+    itens: [
+      "Sempre que uma mensagem automática for enviada pelo WhatsApp (resposta da IA, primeira mensagem, follow-up, régua de relacionamento, remarketing...), uma notificação aparece no sininho — inclusive quando o envio falha, pra você saber na hora.",
+    ],
+  },
+  {
+    data: "2026-10-05",
     titulo: "Perfil de follow-up na tela de Clientes e Remarketing dentro de Follow-up",
     itens: [
       "Tela Clientes: agora dá pra classificar cada cliente com o perfil de follow-up (A/B/C) direto na lista, sem precisar abrir o cadastro — é isso que liga o cliente à régua de relacionamento certa.",
