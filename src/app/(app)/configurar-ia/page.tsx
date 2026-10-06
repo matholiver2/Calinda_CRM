@@ -93,26 +93,15 @@ export default function ConfigurarIaPage() {
           onSalvo={() => mutate()}
         />
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <IntervaloDiasCard
-            key={`intervalo-remarketing-${data ? "carregado" : "carregando"}`}
-            chave="remarketing_intervalo_dias"
-            titulo="Intervalo de remarketing"
-            descricao="Dias sem contato até a IA reengajar automaticamente um lead."
-            valorInicial={data?.configuracoes.remarketing_intervalo_dias ?? "3"}
-            podeEditar={podeEditar}
-            onSalvo={() => mutate()}
-          />
-          <IntervaloDiasCard
-            key={`intervalo-followup-${data ? "carregado" : "carregando"}`}
-            chave="followup_intervalo_dias"
-            titulo="Intervalo de follow-up"
-            descricao="Dias sem contato até o sistema mandar um check-in pra um cliente."
-            valorInicial={data?.configuracoes.followup_intervalo_dias ?? "30"}
-            podeEditar={podeEditar}
-            onSalvo={() => mutate()}
-          />
-        </div>
+        <IntervaloDiasCard
+          key={`intervalo-remarketing-${data ? "carregado" : "carregando"}`}
+          chave="remarketing_intervalo_dias"
+          titulo="Intervalo de remarketing"
+          descricao="Dias sem contato até a IA reengajar automaticamente um lead."
+          valorInicial={data?.configuracoes.remarketing_intervalo_dias ?? "3"}
+          podeEditar={podeEditar}
+          onSalvo={() => mutate()}
+        />
 
         <div>
           <h2 className="mb-3 text-sm font-semibold text-fg">Agentes de IA por etapa do funil</h2>

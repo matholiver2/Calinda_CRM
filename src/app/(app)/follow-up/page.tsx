@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
-import { Plus, Trash2, Pencil, Sparkles, Phone, MessageCircle, Repeat2, MessageCirclePlus, MessageSquareText } from "lucide-react";
+import { Plus, Trash2, Pencil, Sparkles, Phone, MessageCircle, Repeat2, MessageCirclePlus, MessageSquareText, CalendarClock, Save } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -105,6 +105,8 @@ function AbaTipos() {
 
   return (
     <div>
+      <IntervaloFollowUpCard />
+
       <div className="mb-4 flex justify-end">
         <Button size="sm" onClick={() => setEditando("novo")}>
           <Plus className="h-3.5 w-3.5" /> Novo tipo
@@ -146,6 +148,59 @@ function AbaTipos() {
 
       <TipoFollowUpDialog tipo={editando === "novo" ? null : editando} open={editando !== null} onClose={() => setEditando(null)} />
     </div>
+  );
+}
+
+function IntervaloFollowUpCard() {
+  const { data, mutate: mutateConfig } = useSWR<{ configuracoes: Record<string, string> }>("/api/configuracoes", fetcher);
+  const [intervaloDias, setIntervaloDias] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
+
+  const valor = intervaloDias ?? data?.configuracoes.followup_intervalo_dias ?? "30";
+
+  async function salvar() {
+    setSalvando(true);
+    setSucesso(false);
+    try {
+      await apiPatch("/api/configuracoes", { chave: "followup_intervalo_dias", valor });
+      setSucesso(true);
+      mutateConfig();
+      setTimeout(() => setSucesso(false), 2000);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Card className="mb-4 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+          <CalendarClock className="h-4 w-4" />
+        </div>
+        <div>
+          <h2 className="text-sm font-semibold text-fg">Intervalo de follow-up simples</h2>
+          <p className="text-xs text-fg-subtle">
+            Dias sem contato até o sistema mandar um check-in automático pra qualquer cliente — independe da régua de
+            relacionamento abaixo. O texto da mensagem fica em Configurar IA → Mensagens automáticas → Follow-up.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={1}
+          className="max-w-[120px]"
+          value={valor}
+          onChange={(e) => setIntervaloDias(e.target.value)}
+        />
+        <span className="text-sm text-fg-muted">dias</span>
+        {sucesso && <span className="text-xs text-success">Salvo</span>}
+        <Button size="sm" variant="secondary" loading={salvando} onClick={salvar}>
+          <Save className="h-3.5 w-3.5" /> Salvar
+        </Button>
+      </div>
+    </Card>
   );
 }
 

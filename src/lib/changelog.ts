@@ -13,6 +13,13 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-06",
+    titulo: "Intervalo de follow-up simples movido pra tela de Follow-up",
+    itens: [
+      "O campo \"Intervalo de follow-up\" saiu de Configurar IA e agora fica só na tela Follow-up (aba Tipos de Follow-up), junto do resto das configurações de follow-up.",
+    ],
+  },
+  {
+    data: "2026-10-06",
     titulo: "Token da Apify centralizado em Configurações, atalhos de Instagram e Google Maps",
     itens: [
       "O token da Apify (usado na Prospecção de leads) agora é configurado uma única vez por um admin/gestor, em Configurações → Integrações — todo mundo da empresa já consegue usar a prospecção sem precisar colar o próprio token.",
