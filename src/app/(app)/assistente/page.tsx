@@ -13,7 +13,7 @@ type Turno = { autor: "assistente" | "usuario"; texto: string };
 
 const SAUDACAO: Turno = {
   autor: "assistente",
-  texto: "Oi! Sou seu assistente de vendas por aqui dentro do CALINDA. Me conta o que você precisa — de um lead específico, uma mensagem pra revisar, ou uma dúvida do dia a dia.",
+  texto: "Oi! Sou seu assistente de vendas por aqui dentro do Calinda. Me conta o que você precisa — de um lead específico, uma mensagem pra revisar, ou uma dúvida do dia a dia.",
 };
 
 const SUGESTOES = [

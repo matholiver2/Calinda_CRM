@@ -158,7 +158,7 @@ function ReuniaoForm({
 
       <div>
         <label className="mb-1.5 block text-xs font-medium text-fg-muted">Título do evento</label>
-        <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={`CALINDA — ${reuniao.lead?.nome ?? ""}`} />
+        <Input value={titulo} onChange={(e) => setTitulo(e.target.value)} placeholder={`Calinda — ${reuniao.lead?.nome ?? ""}`} />
       </div>
 
       <div>

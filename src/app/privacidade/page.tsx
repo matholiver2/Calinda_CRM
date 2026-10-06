@@ -1,6 +1,6 @@
 import { Logo } from "@/components/ui/Logo";
 
-export const metadata = { title: "Política de Privacidade — CALINDA" };
+export const metadata = { title: "Política de Privacidade — Calinda" };
 
 export default function PrivacidadePage() {
   return (
@@ -8,7 +8,7 @@ export default function PrivacidadePage() {
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 flex items-center gap-2.5">
           <Logo size="sm" />
-          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">CALINDA</span>
+          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">Calinda</span>
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
@@ -19,7 +19,7 @@ export default function PrivacidadePage() {
             <section>
               <h2 className="mb-2 text-base font-semibold text-fg">1. Quem somos</h2>
               <p>
-                O CALINDA é um CRM (sistema de gestão de relacionamento com clientes) com automação por IA, usado por
+                O Calinda é um CRM (sistema de gestão de relacionamento com clientes) com automação por IA, usado por
                 empresas para organizar leads, conversar via WhatsApp e agendar reuniões. Esta política descreve como
                 tratamos os dados de quem usa a plataforma (equipes das empresas clientes) e, quando aplicável, dos
                 contatos/leads que essas empresas gerenciam no sistema.
@@ -40,18 +40,18 @@ export default function PrivacidadePage() {
             <section>
               <h2 className="mb-2 text-base font-semibold text-fg">3. Uso de dados da conta Google</h2>
               <p className="mb-2">
-                Quando você conecta sua conta Google ao CALINDA, usamos as permissões concedidas exclusivamente para:
+                Quando você conecta sua conta Google ao Calinda, usamos as permissões concedidas exclusivamente para:
               </p>
               <ul className="list-disc space-y-1.5 pl-5">
                 <li>
                   <span className="font-medium text-fg">Login (identidade):</span> confirmar quem você é (nome, e-mail e
-                  foto de perfil), pra criar/acessar sua conta no CALINDA.
+                  foto de perfil), pra criar/acessar sua conta no Calinda.
                 </li>
                 <li>
                   <span className="font-medium text-fg">Google Agenda (calendar.events):</span> criar, atualizar e
-                  cancelar eventos de reunião que você agenda dentro do CALINDA, e sincronizar mudanças feitas
+                  cancelar eventos de reunião que você agenda dentro do Calinda, e sincronizar mudanças feitas
                   diretamente na sua agenda de volta pro sistema. Não acessamos outros eventos ou informações da sua
-                  agenda além dos criados pelo próprio CALINDA.
+                  agenda além dos criados pelo próprio Calinda.
                 </li>
                 <li>
                   <span className="font-medium text-fg">Gmail (gmail.send):</span> enviar, a seu pedido, e-mails com
@@ -69,7 +69,7 @@ export default function PrivacidadePage() {
                 >
                   myaccount.google.com/permissions
                 </a>
-                , ou desconectando a integração dentro do próprio CALINDA (Configurações → Integrações).
+                , ou desconectando a integração dentro do próprio Calinda (Configurações → Integrações).
               </p>
             </section>
 
@@ -86,7 +86,7 @@ export default function PrivacidadePage() {
               <h2 className="mb-2 text-base font-semibold text-fg">5. Compartilhamento de dados</h2>
               <p>
                 Não vendemos nem compartilhamos seus dados com terceiros para fins de publicidade. Dados só são
-                enviados a serviços estritamente necessários pro funcionamento do CALINDA (ex: provedor de IA para
+                enviados a serviços estritamente necessários pro funcionamento do Calinda (ex: provedor de IA para
                 gerar respostas automáticas, provedor de WhatsApp para envio/recebimento de mensagens), sempre
                 limitados ao necessário pra prestar o serviço.
               </p>

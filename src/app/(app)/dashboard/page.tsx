@@ -181,7 +181,7 @@ export default function DashboardPage() {
             </div>
             <div className="rounded-2xl bg-[#118A61] p-5 text-white">
               <div className="mb-8 flex items-center justify-between">
-                <span className="text-sm font-semibold tracking-wide">CALINDA</span>
+                <span className="text-sm font-semibold tracking-wide">Calinda</span>
                 <Wallet className="h-4 w-4 opacity-80" />
               </div>
               <p className="mb-1 text-[11px] text-emerald-100/80">Faturamento acumulado</p>

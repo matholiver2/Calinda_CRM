@@ -218,7 +218,7 @@ function TipoFollowUpForm({ tipo, onClose }: { tipo: TipoFollowUp | null; onClos
         </div>
         <p className="mt-1.5 text-xs text-fg-subtle">
           {canal === "automatico"
-            ? "O CALINDA manda essa mensagem sozinho pelo WhatsApp quando o marco da régua vence."
+            ? "O Calinda manda essa mensagem sozinho pelo WhatsApp quando o marco da régua vence."
             : "Não dá pra automatizar uma ligação ou visita de verdade — vira um lembrete/notificação pro vendedor, com o roteiro abaixo de apoio."}
         </p>
       </div>

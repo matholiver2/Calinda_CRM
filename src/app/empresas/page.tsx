@@ -53,7 +53,7 @@ export default function EmpresasPage() {
     <div>
       <PageHeader
         title="Empresas"
-        description="Todas as empresas cadastradas na plataforma CALINDA"
+        description="Todas as empresas cadastradas na plataforma Calinda"
         actions={
           <Button onClick={() => setCriando(true)}>
             <Plus className="h-4 w-4" /> Nova empresa

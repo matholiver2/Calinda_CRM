@@ -231,7 +231,7 @@ function AgenteFormDialog({
             rows={3}
             value={persona}
             onChange={(e) => setPersona(e.target.value)}
-            placeholder="Ex.: Você é a Cali, assistente virtual da CALINDA..."
+            placeholder="Ex.: Você é a Cali, assistente virtual da Calinda..."
           />
         </div>
         <div>

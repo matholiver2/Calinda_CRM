@@ -164,7 +164,7 @@ function Cabecalho({ dados, styles }: { dados: DadosPropostaPdf; styles: Styles 
 }
 
 function Rodape({ dados, styles }: { dados: DadosPropostaPdf; styles: Styles }) {
-  return <Text style={styles.rodape}>Proposta gerada automaticamente pelo CALINDA · {dados.empresaNome}</Text>;
+  return <Text style={styles.rodape}>Proposta gerada automaticamente pelo Calinda · {dados.empresaNome}</Text>;
 }
 
 function PaginaDiagnostico({ dados, styles }: { dados: DadosPropostaPdf; styles: Styles }) {

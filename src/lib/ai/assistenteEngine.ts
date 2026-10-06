@@ -42,7 +42,7 @@ async function montarSystemPrompt(ctx: ContextoAssistente): Promise<string> {
           .join("\n")}\nVocê pode usar a ferramenta consultar_regua_followup pra ver o que está pendente/devido pra um cliente específico (perfil A/B/C, dias de contrato, próximo marco).`
       : `\nA empresa ainda não configurou tipos de follow-up/régua de relacionamento (tela Follow-up) — se a pessoa perguntar sobre follow-up, pode sugerir que configure lá, e ajudar a redigir mensagens de acompanhamento genéricas no meio tempo.`;
 
-  return `Você é o Assistente de Vendas do CALINDA, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
+  return `Você é o Assistente de Vendas do Calinda, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
 
 Você está conversando com ${ctx.usuarioNome}, vendedor(a) da empresa ${ctx.empresaNome}, dentro do próprio CRM (não com um lead/cliente).
 ${ctx.empresaSobre ? `Contexto sobre a empresa: ${ctx.empresaSobre}` : ""}

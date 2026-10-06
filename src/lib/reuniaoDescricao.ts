@@ -39,7 +39,7 @@ export async function montarDescricaoFollowUp(leadId: string): Promise<{ titulo:
     linhas.push("", "PRODUTOS/OBSERVAÇÕES", orcamento.observacoes);
   }
 
-  linhas.push("", "Agendada via CALINDA.");
+  linhas.push("", "Agendada via Calinda.");
 
   return {
     titulo: `${lead.nome}: Renovação/Follow-up`,

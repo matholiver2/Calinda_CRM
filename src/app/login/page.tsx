@@ -132,7 +132,7 @@ function LoginForm() {
         </div>
 
         <p className="mt-4 text-center text-xs text-fg-subtle">
-          O acesso ao CALINDA é somente por convite. Recebeu um link de convite? Abra-o para criar sua conta.
+          O acesso ao Calinda é somente por convite. Recebeu um link de convite? Abra-o para criar sua conta.
         </p>
 
         <p className="mt-3 text-center text-xs text-fg-subtle">

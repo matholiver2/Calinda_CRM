@@ -124,7 +124,7 @@ function OnboardingConteudo() {
             <Logo size="sm" />
             <div>
               <p className="text-sm font-semibold text-fg">
-                {modoPessoal ? "Bem-vindo(a) ao CALINDA" : "Configuração inicial"}
+                {modoPessoal ? "Bem-vindo(a) ao Calinda" : "Configuração inicial"}
               </p>
               <p className="text-xs text-fg-subtle">
                 {modoPessoal ? "Só uma apresentação rápida antes de começar" : "Vamos deixar a IA no jeito do seu negócio"}
@@ -150,7 +150,7 @@ function OnboardingConteudo() {
               >
                 {t.autor === "assistente" && (
                   <p className="mb-1 flex items-center gap-1 text-[10px] font-medium text-accent">
-                    <Sparkles className="h-3 w-3" /> Assistente CALINDA
+                    <Sparkles className="h-3 w-3" /> Assistente Calinda
                   </p>
                 )}
                 <p className="whitespace-pre-wrap">{t.texto}</p>
@@ -179,7 +179,7 @@ function OnboardingConteudo() {
             <div className="rounded-[14px] border border-accent/30 bg-accent-soft/50 p-4 text-center">
               <PartyPopper className="mx-auto mb-2 h-6 w-6 text-accent" />
               <Button className="w-full" loading={criando} onClick={finalizarPessoal}>
-                <CheckCircle2 className="h-3.5 w-3.5" /> Começar a usar o CALINDA
+                <CheckCircle2 className="h-3.5 w-3.5" /> Começar a usar o Calinda
               </Button>
             </div>
           )}

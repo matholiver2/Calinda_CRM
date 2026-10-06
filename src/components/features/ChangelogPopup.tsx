@@ -45,7 +45,7 @@ export function ChangelogPopup() {
   if (!entradas) return null;
 
   return (
-    <Dialog open={open} onClose={fechar} title="Novidades no CALINDA" maxWidth="max-w-lg">
+    <Dialog open={open} onClose={fechar} title="Novidades no Calinda" maxWidth="max-w-lg">
       <div className="space-y-5">
         {entradas.map((e) => (
           <div key={e.data}>

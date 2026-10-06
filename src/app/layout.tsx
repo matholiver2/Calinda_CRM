@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "CALINDA",
+    title: "Calinda",
   },
   icons: {
     apple: "/apple-touch-icon.png",

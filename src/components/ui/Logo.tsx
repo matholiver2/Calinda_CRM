@@ -18,7 +18,7 @@ export function Logo({
   return (
     <Image
       src="/logo-calinda.png"
-      alt="CALINDA"
+      alt="Calinda"
       width={tamanho}
       height={tamanho}
       className={cn(px ? undefined : SIZES[size], "object-contain", className)}

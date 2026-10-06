@@ -1,4 +1,4 @@
-// Changelog do CALINDA — lista mantida no código, editada a cada mudança
+// Changelog do Calinda — lista mantida no código, editada a cada mudança
 // visível pro usuário. Mostrada em /novidades e, pra entradas ainda não
 // vistas, num popup automático ao entrar (ver ChangelogPopup.tsx). A data de
 // cada entrada é o que decide se ela é "nova" pra quem está logando —
@@ -15,7 +15,7 @@ export const CHANGELOG: EntradaChangelog[] = [
     data: "2026-10-05",
     titulo: "Exportar relatórios em PDF",
     itens: [
-      "Na tela Relatórios, novo botão \"Exportar PDF\" — escolha quais seções entram (conversão por etapa, tempo médio, performance por vendedor, origem dos leads) e gere um PDF com a identidade visual do CALINDA.",
+      "Na tela Relatórios, novo botão \"Exportar PDF\" — escolha quais seções entram (conversão por etapa, tempo médio, performance por vendedor, origem dos leads) e gere um PDF com a identidade visual do Calinda.",
     ],
   },
   {
@@ -43,7 +43,7 @@ export const CHANGELOG: EntradaChangelog[] = [
       "Novo botão para excluir um orçamento.",
       "Corrigido: o card \"Faturamento do Mês\" no Dashboard agora atualiza na hora ao registrar uma venda.",
       "Corrigido: a contagem de usuários nos cards de Empresas estava desatualizada — agora reflete quem de fato tem acesso.",
-      "A logo escrita do CALINDA substitui o texto nos cabeçalhos e na tela de login.",
+      "A logo escrita do Calinda substitui o texto nos cabeçalhos e na tela de login.",
       "Botão de Prévia em \"Editar modelo de proposta\" — mostra o PDF com dados de exemplo antes de salvar, pra ver como fica o design.",
       "No Calendário, agora dá pra editar todas as informações de uma reunião (data/hora, responsável, título, descrição, modalidade) e excluir — o evento correspondente no Google Calendar é removido junto.",
       "O chat Assistente tenta de novo automaticamente quando a IA responde com uma instabilidade passageira, antes de mostrar a mensagem de indisponível.",

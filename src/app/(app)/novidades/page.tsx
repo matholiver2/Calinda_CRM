@@ -23,7 +23,7 @@ export default function NovidadesPage() {
 
   return (
     <div>
-      <PageHeader title="Novidades" description="O que mudou no CALINDA recentemente" />
+      <PageHeader title="Novidades" description="O que mudou no Calinda recentemente" />
 
       {entradas.length === 0 ? (
         <Card className="flex flex-col items-center justify-center gap-3 py-16 text-center">

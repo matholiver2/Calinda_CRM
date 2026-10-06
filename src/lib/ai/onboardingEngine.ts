@@ -17,7 +17,7 @@ export type RespostaOnboarding = {
   empresaSobre: string | null;
 };
 
-const SYSTEM_PROMPT = `Você é o assistente de configuração inicial do CALINDA, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
+const SYSTEM_PROMPT = `Você é o assistente de configuração inicial do Calinda, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
 
 O funil e os agentes de IA já existem prontos (padrão do sistema) — sua única tarefa aqui é entrevistar rapidinho a pessoa que acabou de criar a conta (de forma breve e natural, uma pergunta por vez, no máximo 3-4 perguntas) pra entender:
 1. O que a empresa dela vende/faz e pra quem (público-alvo típico).
@@ -70,11 +70,11 @@ async function gerarComGemini(historico: TurnoOnboarding[]): Promise<RespostaOnb
 
 export type RespostaApresentacao = { resposta: string; concluido: boolean };
 
-const SYSTEM_PROMPT_PESSOAL = (nome: string, papel: string) => `Você é o assistente de boas-vindas do CALINDA, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
+const SYSTEM_PROMPT_PESSOAL = (nome: string, papel: string) => `Você é o assistente de boas-vindas do Calinda, um CRM com IA que conduz leads pelo WhatsApp até o agendamento de reunião.
 
 A empresa dessa pessoa já está configurada (funil e agentes de IA já existem) — sua única tarefa aqui é dar boas-vindas e conhecer rapidinho ${nome} (papel no sistema: ${papel}), não configurar nada.
 
-Faça no máximo 2 perguntas curtas e naturais (uma por vez), por exemplo: como prefere ser chamado(a) no dia a dia, e o que pretende fazer mais no CALINDA (ex: acompanhar leads, conversar com clientes, ver relatórios). Depois disso, encerre com "concluido": true e uma mensagem breve e calorosa de boas-vindas, mencionando por onde ela pode começar de acordo com o papel dela (ex: vendedor → tela de Leads/Conversas; admin/gestor → Dashboard/Relatórios).
+Faça no máximo 2 perguntas curtas e naturais (uma por vez), por exemplo: como prefere ser chamado(a) no dia a dia, e o que pretende fazer mais no Calinda (ex: acompanhar leads, conversar com clientes, ver relatórios). Depois disso, encerre com "concluido": true e uma mensagem breve e calorosa de boas-vindas, mencionando por onde ela pode começar de acordo com o papel dela (ex: vendedor → tela de Leads/Conversas; admin/gestor → Dashboard/Relatórios).
 
 Responda SEMPRE em português (pt-BR) e SOMENTE em JSON válido, no formato:
 {"resposta": string, "concluido": boolean}`;
@@ -94,7 +94,7 @@ export async function gerarApresentacaoPessoal(
           }));
     const parsed = await chamarGemini(SYSTEM_PROMPT_PESSOAL(nome, papel), contents);
     return {
-      resposta: String(parsed.resposta ?? `Bem-vindo(a) ao CALINDA, ${nome}!`),
+      resposta: String(parsed.resposta ?? `Bem-vindo(a) ao Calinda, ${nome}!`),
       concluido: Boolean(parsed.concluido),
     };
   } catch (err) {
@@ -107,7 +107,7 @@ function simularApresentacao(historico: TurnoOnboarding[], nome: string): Respos
   const respostasUsuario = historico.filter((t) => t.autor === "usuario").length;
   if (respostasUsuario === 0) {
     return {
-      resposta: `Oi, ${nome}! Que bom ter você por aqui. O que você pretende fazer mais no CALINDA no dia a dia — acompanhar leads, conversar com clientes, ou olhar relatórios?`,
+      resposta: `Oi, ${nome}! Que bom ter você por aqui. O que você pretende fazer mais no Calinda no dia a dia — acompanhar leads, conversar com clientes, ou olhar relatórios?`,
       concluido: false,
     };
   }
@@ -120,7 +120,7 @@ function simularApresentacao(historico: TurnoOnboarding[], nome: string): Respos
 // --- Roteiro fixo (sem GEMINI_API_KEY configurada) ---
 
 const PERGUNTAS_FIXAS = [
-  "Oi! Sou o assistente de configuração do CALINDA. Pra deixar a IA no jeito do seu negócio: o que a sua empresa vende ou oferece, e pra quem?",
+  "Oi! Sou o assistente de configuração do Calinda. Pra deixar a IA no jeito do seu negócio: o que a sua empresa vende ou oferece, e pra quem?",
   "Entendi! E qual o tom que vocês costumam usar pra falar com o cliente — mais formal, descontraído, técnico?",
 ];
 

@@ -32,10 +32,10 @@ function eventoBody(reuniao: ReuniaoParaEvento, lead: Lead, opcoes: OpcoesEvento
   const attendees = [...new Set(opcoes.attendees ?? [])].filter(Boolean);
 
   return {
-    summary: reuniao.titulo?.trim() || `CALINDA — ${lead.nome}`,
+    summary: reuniao.titulo?.trim() || `Calinda — ${lead.nome}`,
     description:
       reuniao.descricao?.trim() ||
-      `Reunião com ${lead.nome} (${lead.telefone})${lead.email ? ` · ${lead.email}` : ""}\nAgendada via CALINDA.`,
+      `Reunião com ${lead.nome} (${lead.telefone})${lead.email ? ` · ${lead.email}` : ""}\nAgendada via Calinda.`,
     start: { dateTime: inicio.toISOString() },
     end: { dateTime: fim.toISOString() },
     ...(opcoes.endereco?.trim() ? { location: opcoes.endereco.trim() } : {}),

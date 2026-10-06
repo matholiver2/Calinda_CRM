@@ -1,6 +1,6 @@
 import { Logo } from "@/components/ui/Logo";
 
-export const metadata = { title: "Termos de Uso — CALINDA" };
+export const metadata = { title: "Termos de Uso — Calinda" };
 
 export default function TermosPage() {
   return (
@@ -8,7 +8,7 @@ export default function TermosPage() {
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 flex items-center gap-2.5">
           <Logo size="sm" />
-          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">CALINDA</span>
+          <span className="font-display text-lg font-semibold tracking-[-0.02em] text-fg">Calinda</span>
         </div>
 
         <div className="rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-card)] sm:p-8">
@@ -19,7 +19,7 @@ export default function TermosPage() {
             <section>
               <h2 className="mb-2 text-base font-semibold text-fg">1. Sobre o serviço</h2>
               <p>
-                O CALINDA é um CRM com automação por IA que ajuda empresas a organizar leads, conduzir conversas via
+                O Calinda é um CRM com automação por IA que ajuda empresas a organizar leads, conduzir conversas via
                 WhatsApp e agendar reuniões. O acesso é feito por convite, sob responsabilidade da empresa que
                 contrata e administra o uso da plataforma.
               </p>
@@ -36,7 +36,7 @@ export default function TermosPage() {
             <section>
               <h2 className="mb-2 text-base font-semibold text-fg">3. Uso aceitável</h2>
               <p>
-                O CALINDA não deve ser usado para enviar mensagens não solicitadas em massa (spam), conteúdo
+                O Calinda não deve ser usado para enviar mensagens não solicitadas em massa (spam), conteúdo
                 ilegal, ou de qualquer forma que viole os termos de uso do WhatsApp, do Google ou de outros serviços
                 integrados. O uso da integração de WhatsApp não-oficial é de responsabilidade do usuário, incluindo
                 os riscos associados a essa modalidade de conexão.
@@ -46,7 +46,7 @@ export default function TermosPage() {
             <section>
               <h2 className="mb-2 text-base font-semibold text-fg">4. Integrações com terceiros</h2>
               <p>
-                Ao conectar sua conta Google, você autoriza o CALINDA a usar as permissões concedidas conforme
+                Ao conectar sua conta Google, você autoriza o Calinda a usar as permissões concedidas conforme
                 descrito na nossa{" "}
                 <a href="/privacidade" className="text-accent hover:underline">
                   Política de Privacidade
@@ -67,7 +67,7 @@ export default function TermosPage() {
             <section>
               <h2 className="mb-2 text-base font-semibold text-fg">6. Alterações</h2>
               <p>
-                Estes termos podem ser atualizados conforme o CALINDA evolui. Mudanças relevantes serão comunicadas
+                Estes termos podem ser atualizados conforme o Calinda evolui. Mudanças relevantes serão comunicadas
                 aos usuários.
               </p>
             </section>

@@ -1,4 +1,4 @@
-// PDF de relatório — identidade visual da CALINDA (verde da marca, mesmo
+// PDF de relatório — identidade visual da Calinda (verde da marca, mesmo
 // tom usado no app: #23864a). Seções escolhidas pelo usuário na tela de
 // Relatórios (ver /api/relatorios/conversao/pdf).
 
@@ -87,7 +87,7 @@ function Cabecalho({ dados }: { dados: DadosRelatorioPdf }) {
 }
 
 function Rodape({ dados }: { dados: DadosRelatorioPdf }) {
-  return <Text style={styles.rodape}>Relatório gerado automaticamente pelo CALINDA · {dados.empresaNome}</Text>;
+  return <Text style={styles.rodape}>Relatório gerado automaticamente pelo Calinda · {dados.empresaNome}</Text>;
 }
 
 function RelatorioDocumento({ dados }: { dados: DadosRelatorioPdf }) {

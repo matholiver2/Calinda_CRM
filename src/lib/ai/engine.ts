@@ -1,4 +1,4 @@
-// Motor de automação/IA do CALINDA.
+// Motor de automação/IA do Calinda.
 //
 // Recebe o contexto da conversa (persona/objetivo do agente da etapa atual,
 // histórico de mensagens e dados do lead) e devolve: texto de resposta +
@@ -229,7 +229,7 @@ async function gerarComGemini(input: AiEngineInput): Promise<AiDecision> {
     minute: "2-digit",
   });
 
-  const systemPrompt = `Você é um agente de IA de vendas dentro de um CRM chamado CALINDA.
+  const systemPrompt = `Você é um agente de IA de vendas dentro de um CRM chamado Calinda.
 Persona/empresa: ${input.persona}
 Objetivo nesta etapa ("${input.etapaNome}"): ${input.objetivo}
 
@@ -301,7 +301,7 @@ export async function gerarReengajamento(input: ReengajamentoInput): Promise<Ree
 }
 
 async function gerarReengajamentoComGemini(input: ReengajamentoInput): Promise<ReengajamentoDecisao> {
-  const systemPrompt = `Você é um agente de IA de remarketing dentro de um CRM chamado CALINDA.
+  const systemPrompt = `Você é um agente de IA de remarketing dentro de um CRM chamado Calinda.
 Persona/empresa: ${input.persona}
 Objetivo: ${input.objetivo}
 
@@ -367,7 +367,7 @@ export type MensagemComBaseInput = {
  */
 export async function gerarMensagemComBase(input: MensagemComBaseInput): Promise<string> {
   try {
-    const systemPrompt = `Você é um agente de IA de vendas dentro de um CRM chamado CALINDA.
+    const systemPrompt = `Você é um agente de IA de vendas dentro de um CRM chamado Calinda.
 Persona/empresa: ${input.persona}
 
 Sua tarefa é escrever ${input.tarefa} para o lead ${input.leadNome}, usando o texto abaixo como BASE/inspiração — não copie ao pé da letra, adapte com naturalidade ao momento da conversa, mas mantenha a essência e as informações importantes dele:
