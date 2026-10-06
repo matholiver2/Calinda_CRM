@@ -16,11 +16,11 @@ export function TopNavbar({ usuario }: { usuario: SessionPayload }) {
   const pathname = usePathname();
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between rounded-tl-[24px] rounded-tr-[24px] rounded-br-[24px] bg-bg-elevated px-4 shadow-[var(--shadow-float)] md:px-8">
+    <header className="flex h-24 shrink-0 items-center justify-between rounded-tl-[24px] rounded-tr-[24px] rounded-br-[24px] bg-bg-elevated px-4 shadow-[var(--shadow-float)] md:px-8">
       <div className="flex items-center gap-2 md:gap-2.5">
         <MobileNavDrawer />
         <Logo size="sm" />
-        <LogoEscrita heightClassName="h-10" className="hidden sm:inline-block" />
+        <LogoEscrita heightClassName="h-20" className="hidden sm:inline-block" />
       </div>
 
       <nav className="hidden h-9 items-center gap-1 rounded-full bg-bg px-1.5 md:flex">
