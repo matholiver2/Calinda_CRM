@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
-import { Plus, Search, Bot, BotOff, Trash2 } from "lucide-react";
+import { Plus, Search, Bot, BotOff, Trash2, Upload } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -11,6 +11,7 @@ import { Input, Select } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { NovoLeadDialog } from "@/components/features/NovoLeadDialog";
+import { ImportarPlanilhaDialog } from "@/components/features/ImportarPlanilhaDialog";
 import { fetcher, apiDelete, ApiError } from "@/lib/fetcher";
 import { formatarTelefone, statusLabel } from "@/lib/utils";
 import type { Etapa, Lead } from "@/types";
@@ -34,6 +35,7 @@ export default function LeadsPage() {
   const [statusFiltro, setStatusFiltro] = useState("");
   const [origemFiltro, setOrigemFiltro] = useState("");
   const [novoLeadAberto, setNovoLeadAberto] = useState(false);
+  const [importarAberto, setImportarAberto] = useState(false);
 
   const leads = useMemo(() => leadsData?.leads ?? [], [leadsData]);
   const etapas = etapasData?.etapas ?? [];
@@ -64,9 +66,14 @@ export default function LeadsPage() {
         title="Leads"
         description={`${filtrados.length} de ${leads.length} leads`}
         actions={
-          <Button onClick={() => setNovoLeadAberto(true)}>
-            <Plus className="h-4 w-4" /> Novo lead
-          </Button>
+          <>
+            <Button variant="secondary" onClick={() => setImportarAberto(true)}>
+              <Upload className="h-4 w-4" /> Importar planilha
+            </Button>
+            <Button onClick={() => setNovoLeadAberto(true)}>
+              <Plus className="h-4 w-4" /> Novo lead
+            </Button>
+          </>
         }
       />
 
@@ -227,6 +234,12 @@ export default function LeadsPage() {
       </Card>
 
       <NovoLeadDialog open={novoLeadAberto} onClose={() => setNovoLeadAberto(false)} />
+      <ImportarPlanilhaDialog
+        open={importarAberto}
+        onClose={() => setImportarAberto(false)}
+        statusAlvo="ativo"
+        chaveSwr={["/api/leads", "/api/dashboard/metrica-geral"]}
+      />
     </div>
   );
 }

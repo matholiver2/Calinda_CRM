@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR, { mutate } from "swr";
-import { Search, MessageCircle, FileText, Users, Plus, Tag, Save, CalendarClock } from "lucide-react";
+import { Search, MessageCircle, FileText, Users, Plus, Tag, Save, CalendarClock, Upload } from "lucide-react";
+import { ImportarPlanilhaDialog } from "@/components/features/ImportarPlanilhaDialog";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -27,6 +28,7 @@ export default function ClientesPage() {
   const [busca, setBusca] = useState("");
   const [grupoFiltro, setGrupoFiltro] = useState("");
   const [criandoGrupo, setCriandoGrupo] = useState(false);
+  const [importarAberto, setImportarAberto] = useState(false);
 
   const grupos = gruposData?.grupos ?? [];
 
@@ -63,6 +65,9 @@ export default function ClientesPage() {
                 <CalendarClock className="h-3.5 w-3.5" /> Régua de follow-up
               </Button>
             </Link>
+            <Button variant="secondary" size="sm" onClick={() => setImportarAberto(true)}>
+              <Upload className="h-3.5 w-3.5" /> Importar planilha
+            </Button>
             <Button variant="secondary" size="sm" onClick={() => setCriandoGrupo(true)}>
               <Plus className="h-3.5 w-3.5" /> Novo grupo
             </Button>
@@ -275,6 +280,12 @@ export default function ClientesPage() {
       )}
 
       <NovoGrupoDialog open={criandoGrupo} onClose={() => setCriandoGrupo(false)} />
+      <ImportarPlanilhaDialog
+        open={importarAberto}
+        onClose={() => setImportarAberto(false)}
+        statusAlvo="cliente"
+        chaveSwr="/api/leads?status=cliente"
+      />
     </div>
   );
 }
