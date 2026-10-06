@@ -18,6 +18,8 @@ import {
   Download,
   Trash2,
   File as FileIcon,
+  AtSign,
+  MapPinned,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -203,6 +205,22 @@ export default function LeadDetalhePage({ params }: { params: Promise<{ id: stri
   );
 }
 
+/** Aceita "@perfil", "instagram.com/perfil" ou um site qualquer e monta uma URL clicável. */
+function linkInstagramSite(valor: string): string | null {
+  const v = valor.trim();
+  if (!v) return null;
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith("@")) return `https://instagram.com/${v.slice(1)}`;
+  if (/^instagram\.com\//i.test(v)) return `https://${v}`;
+  return `https://${v}`;
+}
+
+function linkGoogleMaps(endereco: string): string | null {
+  const v = endereco.trim();
+  if (!v) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v)}`;
+}
+
 function InstagramSiteCard({ leadId, valorInicial }: { leadId: string; valorInicial: string | null }) {
   const [valor, setValor] = useState(valorInicial ?? "");
   const [salvando, setSalvando] = useState(false);
@@ -236,6 +254,16 @@ function InstagramSiteCard({ leadId, valorInicial }: { leadId: string; valorInic
           <Save className="h-3.5 w-3.5" />
         </Button>
       </div>
+      {linkInstagramSite(valor) && (
+        <a
+          href={linkInstagramSite(valor)!}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-border px-3 py-2 text-xs font-medium text-fg-muted hover:border-accent hover:text-accent"
+        >
+          <AtSign className="h-3.5 w-3.5" /> Abrir
+        </a>
+      )}
     </Card>
   );
 }
@@ -273,6 +301,16 @@ function EnderecoCard({ leadId, valorInicial }: { leadId: string; valorInicial: 
           <Save className="h-3.5 w-3.5" />
         </Button>
       </div>
+      {linkGoogleMaps(valor) && (
+        <a
+          href={linkGoogleMaps(valor)!}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-[10px] border border-border px-3 py-2 text-xs font-medium text-fg-muted hover:border-accent hover:text-accent"
+        >
+          <MapPinned className="h-3.5 w-3.5" /> Abrir no Google Maps
+        </a>
+      )}
     </Card>
   );
 }

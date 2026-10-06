@@ -13,12 +13,15 @@ import {
   Stethoscope,
   XCircle,
   Loader2,
+  Target,
+  KeyRound,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Dialog } from "@/components/ui/Dialog";
-import { fetcher, apiPost } from "@/lib/fetcher";
+import { Input } from "@/components/ui/Input";
+import { fetcher, apiPost, apiPatch, apiDelete, ApiError } from "@/lib/fetcher";
 
 type Integracoes = {
   whatsapp: { provider: string; configurado: boolean };
@@ -67,6 +70,7 @@ export function IntegracoesConfig({ podeEditar }: { podeEditar: boolean }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {data && <WhatsappCard whatsapp={data.whatsapp} podeEditar={podeEditar} />}
         <GoogleCalendarCard />
+        <ApifyCard podeEditar={podeEditar} />
         <DiagnosticoCard />
         {itens.map((item) => (
           <Card key={item.nome} className="p-4">
@@ -267,6 +271,111 @@ function DiagnosticoCard() {
         </Button>
       </div>
     </Card>
+  );
+}
+
+function ApifyCard({ podeEditar }: { podeEditar: boolean }) {
+  const { data, mutate } = useSWR<{ configurado: boolean }>("/api/prospeccao/config", fetcher);
+  const [dialogAberto, setDialogAberto] = useState(false);
+  const configurado = data?.configurado ?? false;
+
+  return (
+    <>
+      <Card className="p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-hover text-fg-muted">
+            <Target className="h-4.5 w-4.5" />
+          </div>
+          <Badge color={configurado ? "#10B981" : "#71717a"}>
+            {configurado ? <CheckCircle2 className="h-3 w-3" /> : <CircleAlert className="h-3 w-3" />}
+            {configurado ? "Conectado" : "Desconectado"}
+          </Badge>
+        </div>
+        <p className="text-sm font-semibold text-fg">Apify (prospecção)</p>
+        <p className="mt-0.5 text-xs text-fg-subtle">Usado pra extrair leads do Google Maps na tela Prospecção</p>
+        <p className="mt-1 text-[10px] text-fg-subtle">Token da empresa — vale pra todos os usuários</p>
+        {podeEditar ? (
+          <div className="mt-3 flex gap-2">
+            <Button variant="secondary" size="sm" className="w-full" onClick={() => setDialogAberto(true)}>
+              <KeyRound className="h-3.5 w-3.5" /> {configurado ? "Trocar token" : "Configurar"}
+            </Button>
+            {configurado && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  if (!confirm("Remover o token da Apify? A prospecção deixa de funcionar pra todo mundo da empresa.")) return;
+                  await apiDelete("/api/prospeccao/config");
+                  mutate();
+                }}
+              >
+                Remover
+              </Button>
+            )}
+          </div>
+        ) : (
+          !configurado && <p className="mt-3 text-[11px] text-fg-subtle">Peça pra um admin configurar aqui.</p>
+        )}
+      </Card>
+
+      <ApifyTokenDialog
+        open={dialogAberto}
+        onClose={() => setDialogAberto(false)}
+        onSaved={() => {
+          mutate();
+          setDialogAberto(false);
+        }}
+      />
+    </>
+  );
+}
+
+function ApifyTokenDialog({
+  open,
+  onClose,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [token, setToken] = useState("");
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+
+  async function salvar() {
+    if (!token.trim()) return setErro("Cole o token da Apify");
+    setSalvando(true);
+    setErro(null);
+    try {
+      await apiPatch("/api/prospeccao/config", { token: token.trim() });
+      setToken("");
+      onSaved();
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao salvar token");
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onClose={onClose} title="Conectar Apify">
+      <div className="space-y-4">
+        <p className="text-sm text-fg-muted">
+          A prospecção usa a <strong>Apify</strong> pra extrair leads do Google Maps. Crie uma conta gratuita em{" "}
+          <a href="https://console.apify.com/settings/integrations" target="_blank" rel="noreferrer" className="text-accent hover:underline">
+            console.apify.com
+          </a>
+          , copie sua Personal API token em Settings → API &amp; Integrations, e cole abaixo. Esse token vale pra
+          toda a empresa — qualquer usuário vai poder usar a prospecção depois de configurado.
+        </p>
+        <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="apify_api_..." />
+        {erro && <p className="text-sm text-danger">{erro}</p>}
+        <Button className="w-full" onClick={salvar} loading={salvando}>
+          <KeyRound className="h-3.5 w-3.5" /> Validar e salvar
+        </Button>
+      </div>
+    </Dialog>
   );
 }
 

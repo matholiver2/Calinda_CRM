@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Columns3, Plug, Users, UserCircle, FileText, CalendarClock, LifeBuoy } from "lucide-react";
+import { Columns3, Plug, Users, UserCircle, FileText, CalendarClock, LifeBuoy, CheckCircle2, CircleAlert } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Select } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,13 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+const ERRO_GOOGLE_LABEL: Record<string, string> = {
+  google_estado_invalido: "A conexão expirou ou foi aberta em outra aba — tente conectar de novo.",
+  google_sem_refresh_token:
+    "O Google não devolveu permissão de acesso contínuo. Revogue o acesso do Calinda em myaccount.google.com/permissions e tente conectar de novo.",
+  google_erro: "Não foi possível conectar com o Google. Tente de novo em instantes.",
+};
+
 export default function ConfiguracoesPage() {
   const searchParams = useSearchParams();
   const tabInicial = TABS.find((t) => t.id === searchParams.get("tab"))?.id ?? "conta";
@@ -36,9 +43,24 @@ export default function ConfiguracoesPage() {
   const papel = data?.usuario?.papel;
   const podeEditar = papel === "admin" || papel === "gestor" || papel === "super_admin";
 
+  const googleConectado = searchParams.get("calendario") === "conectado";
+  const googleErro = searchParams.get("erro");
+
   return (
     <div>
       <PageHeader title="Configurações" description="Conta, etapas do funil, integrações e usuários" />
+
+      {googleConectado && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 px-3.5 py-2.5 text-sm text-success">
+          <CheckCircle2 className="h-4 w-4 shrink-0" /> Google Calendar conectado com sucesso.
+        </div>
+      )}
+      {googleErro && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-sm text-danger">
+          <CircleAlert className="h-4 w-4 shrink-0" />
+          {ERRO_GOOGLE_LABEL[googleErro] ?? "Não foi possível conectar com o Google."}
+        </div>
+      )}
 
       {/* Mobile: dropdown — a fileira de abas fica apertada demais numa tela pequena */}
       <div className="mb-5 sm:hidden">

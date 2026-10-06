@@ -7,18 +7,17 @@ import {
   MapPin,
   Rocket,
   Loader2,
-  KeyRound,
   Download,
   Star,
   Phone,
   Globe,
   CheckCircle2,
+  CircleAlert,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Dialog } from "@/components/ui/Dialog";
-import { fetcher, apiPost, apiPatch, ApiError } from "@/lib/fetcher";
+import { fetcher, apiPost, ApiError } from "@/lib/fetcher";
 
 type LeadProspectado = {
   nome: string;
@@ -32,11 +31,7 @@ type LeadProspectado = {
 };
 
 export default function ProspeccaoPage() {
-  const { data: configData, mutate: mutateConfig } = useSWR<{ configurado: boolean }>(
-    "/api/prospeccao/config",
-    fetcher
-  );
-  const [dialogToken, setDialogToken] = useState(false);
+  const { data: configData } = useSWR<{ configurado: boolean }>("/api/prospeccao/config", fetcher);
 
   const [nicho, setNicho] = useState("");
   const [localizacao, setLocalizacao] = useState("");
@@ -60,7 +55,7 @@ export default function ProspeccaoPage() {
       return;
     }
     if (configurado === false) {
-      setDialogToken(true);
+      setErro("A integração com a Apify ainda não foi configurada. Peça pra um admin configurar em Configurações → Integrações.");
       return;
     }
     setErro(null);
@@ -160,14 +155,16 @@ export default function ProspeccaoPage() {
         </p>
       </div>
 
-      <TokenDialog
-        open={dialogToken}
-        onClose={() => setDialogToken(false)}
-        onSaved={() => {
-          mutateConfig();
-          setDialogToken(false);
-        }}
-      />
+      {configurado === false && (
+        <Card className="flex items-center gap-2.5 border-amber-300 bg-amber-50 p-3.5 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+          <CircleAlert className="h-4 w-4 shrink-0" />
+          A integração com a Apify ainda não foi configurada pra essa empresa. Peça pra um admin configurar em{" "}
+          <a href="/configuracoes?tab=integracoes" className="font-medium underline">
+            Configurações → Integrações
+          </a>
+          .
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
         <Card className="h-fit space-y-4 p-5">
@@ -232,16 +229,10 @@ export default function ProspeccaoPage() {
 
           {erro && <p className="text-sm text-danger">{erro}</p>}
 
-          <Button className="w-full" onClick={buscar} loading={buscando}>
+          <Button className="w-full" onClick={buscar} loading={buscando} disabled={configurado === false}>
             {buscando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
             {buscando ? "Buscando..." : "Buscar leads"}
           </Button>
-
-          {configurado === false && (
-            <Button variant="secondary" className="w-full" onClick={() => setDialogToken(true)}>
-              <KeyRound className="h-3.5 w-3.5" /> Configurar Apify
-            </Button>
-          )}
         </Card>
 
         <div>
@@ -324,45 +315,5 @@ export default function ProspeccaoPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function TokenDialog({ open, onClose, onSaved }: { open: boolean; onClose: () => void; onSaved: () => void }) {
-  const [token, setToken] = useState("");
-  const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-
-  async function salvar() {
-    if (!token.trim()) return setErro("Cole seu token da Apify");
-    setSalvando(true);
-    setErro(null);
-    try {
-      await apiPatch("/api/prospeccao/config", { token: token.trim() });
-      setToken("");
-      onSaved();
-    } catch (err) {
-      setErro(err instanceof ApiError ? err.message : "Erro ao salvar token");
-    } finally {
-      setSalvando(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onClose={onClose} title="Conectar sua conta Apify">
-      <div className="space-y-4">
-        <p className="text-sm text-fg-muted">
-          A prospecção usa a <strong>Apify</strong> pra extrair leads do Google Maps. Crie uma conta gratuita em{" "}
-          <a href="https://console.apify.com/settings/integrations" target="_blank" rel="noreferrer" className="text-accent hover:underline">
-            console.apify.com
-          </a>
-          , copie sua Personal API token em Settings → API &amp; Integrations, e cole abaixo.
-        </p>
-        <Input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="apify_api_..." />
-        {erro && <p className="text-sm text-danger">{erro}</p>}
-        <Button className="w-full" onClick={salvar} loading={salvando}>
-          <KeyRound className="h-3.5 w-3.5" /> Validar e salvar
-        </Button>
-      </div>
-    </Dialog>
   );
 }

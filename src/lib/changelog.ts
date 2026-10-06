@@ -13,6 +13,15 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-06",
+    titulo: "Token da Apify centralizado em Configurações, atalhos de Instagram e Google Maps",
+    itens: [
+      "O token da Apify (usado na Prospecção de leads) agora é configurado uma única vez por um admin/gestor, em Configurações → Integrações — todo mundo da empresa já consegue usar a prospecção sem precisar colar o próprio token.",
+      "Na página do lead/cliente, os cards de Instagram/Site e Endereço agora têm um botão para abrir direto o perfil/site e o endereço no Google Maps.",
+      "Corrigido: ao conectar (ou falhar ao conectar) o Google Calendar em Configurações, a tela agora mostra se deu certo ou o motivo do erro — antes o resultado não aparecia.",
+    ],
+  },
+  {
+    data: "2026-10-06",
     titulo: "Campo de endereço no lead/cliente",
     itens: [
       "Leads e clientes agora têm um campo de endereço próprio (editável na página do cliente), que também pode vir preenchido direto na importação por planilha.",
