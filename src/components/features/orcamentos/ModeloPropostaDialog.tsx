@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import useSWR from "swr";
-import { Plus, Trash2, ArrowUp, ArrowDown, Eye } from "lucide-react";
+import { useRef, useState } from "react";
+import useSWR, { mutate as mutateGlobal } from "swr";
+import { Plus, Trash2, ArrowUp, ArrowDown, Eye, ImageUp, X, Building2 } from "lucide-react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
-import { fetcher, apiPatch, ApiError } from "@/lib/fetcher";
+import { fetcher, apiPatch, apiDelete, ApiError } from "@/lib/fetcher";
+import { redimensionarLogo } from "@/lib/imagem";
 import type { ModeloProposta, TemaProposta, EstiloFonte, SectionId } from "@/lib/propostaTipos";
 import { SECOES_LABEL } from "@/lib/propostaTipos";
 
@@ -163,6 +164,8 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
 function AbaMarca({ modelo, set }: { modelo: ModeloProposta; set: Setter }) {
   return (
     <div className="space-y-5">
+      <LogoEmpresaCampo />
+
       <div>
         <p className="mb-2 text-xs font-medium text-fg-muted">Tema visual</p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -218,6 +221,85 @@ function AbaMarca({ modelo, set }: { modelo: ModeloProposta; set: Setter }) {
       <Campo label="Validade da proposta (dias)">
         <Input type="number" min={1} value={modelo.validadeDias} onChange={(e) => set("validadeDias", Number(e.target.value))} />
       </Campo>
+    </div>
+  );
+}
+
+function LogoEmpresaCampo() {
+  const { data, mutate } = useSWR<{ usuario: { empresaAtiva: { nome: string; logoUrl: string | null } | null } }>(
+    "/api/auth/me",
+    fetcher
+  );
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const [enviando, setEnviando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const empresaAtiva = data?.usuario?.empresaAtiva;
+
+  async function onSelecionar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErro("Selecione um arquivo de imagem");
+      return;
+    }
+    setErro(null);
+    setEnviando(true);
+    try {
+      const dataUrl = await redimensionarLogo(file);
+      await apiPatch("/api/empresa/logo", { logoUrl: dataUrl });
+      await mutate();
+      mutateGlobal("/api/auth/me");
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao enviar a logo");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  async function onRemover() {
+    setEnviando(true);
+    try {
+      await apiDelete("/api/empresa/logo");
+      await mutate();
+      mutateGlobal("/api/auth/me");
+    } catch (err) {
+      setErro(err instanceof ApiError ? err.message : "Erro ao remover a logo");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-2 text-xs font-medium text-fg-muted">Logo da empresa (aparece no cabeçalho do PDF)</p>
+      <div className="flex items-center gap-4">
+        <div className="flex h-16 w-28 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-surface-hover">
+          {empresaAtiva?.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- data URL
+            <img src={empresaAtiva.logoUrl} alt={empresaAtiva.nome} className="max-h-full max-w-full object-contain p-1.5" />
+          ) : (
+            <Building2 className="h-5 w-5 text-fg-subtle" />
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Button variant="secondary" size="sm" loading={enviando} onClick={() => logoInputRef.current?.click()}>
+            <ImageUp className="h-3.5 w-3.5" /> Enviar logo
+          </Button>
+          {empresaAtiva?.logoUrl && (
+            <button
+              type="button"
+              onClick={onRemover}
+              disabled={enviando}
+              className="flex items-center gap-1 text-xs font-medium text-fg-subtle hover:text-danger disabled:opacity-50"
+            >
+              <X className="h-3 w-3" /> Remover logo
+            </button>
+          )}
+          <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={onSelecionar} />
+        </div>
+      </div>
+      {erro && <p className="mt-2 text-xs text-danger">{erro}</p>}
     </div>
   );
 }

@@ -13,6 +13,13 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-08",
+    titulo: "Upload da logo direto em Editar modelo de proposta",
+    itens: [
+      "A aba \"Marca & Tema\" de Editar modelo de proposta agora tem o upload da logo da empresa (a mesma que aparece no cabeçalho do PDF do orçamento) — antes só dava pra trocar em Configurações → Minha conta.",
+    ],
+  },
+  {
+    data: "2026-10-08",
     titulo: "Corrige \"Erro na operação\" ao escolher o responsável de uma reunião",
     itens: [
       "Achado o motivo real do erro ao criar/editar reunião: o campo \"Responsável\" mandava um ID interno errado assim que você escolhia alguém na lista, e o sistema rejeitava a reunião inteira sem explicação. Corrigido na raiz — escolher qualquer responsável agora funciona.",
