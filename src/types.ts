@@ -15,6 +15,8 @@ export type VendedorResumo = {
   nome: string;
   avatarCor: string;
   email?: string;
+  /** Só presente na listagem de /api/usuarios, onde `id` é o MembroEmpresa.id (vínculo com a empresa) — este é o Usuario.id de verdade, o que qualquer FK (vendedorId) espera. */
+  usuarioId?: string;
 };
 
 export type GrupoCliente = {

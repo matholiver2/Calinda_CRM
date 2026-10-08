@@ -29,6 +29,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
   const body = await req.json().catch(() => null);
 
+  if (body?.vendedorId) {
+    const membro = await prisma.membroEmpresa.findFirst({ where: { usuarioId: body.vendedorId, empresaId: ctx.empresaId } });
+    if (!membro) return NextResponse.json({ erro: "Responsável inválido" }, { status: 400 });
+  }
+
   const reuniao = await prisma.reuniao.update({
     where: { id },
     data: {
@@ -36,7 +41,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       resultado: body?.resultado,
       linkCalendario: body?.linkCalendario,
       dataHora: body?.dataHora ? new Date(body.dataHora) : undefined,
-      vendedorId: body?.vendedorId,
+      vendedorId: body?.vendedorId !== undefined ? (body.vendedorId || null) : undefined,
       modalidade: body?.modalidade,
       endereco: body?.endereco !== undefined ? body.endereco || null : undefined,
       titulo: body?.titulo !== undefined ? body.titulo || null : undefined,

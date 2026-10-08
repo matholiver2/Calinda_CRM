@@ -23,6 +23,10 @@ export async function GET() {
 
   const usuarios = membros.map((m) => ({
     id: m.id,
+    // Usuario.id de verdade — é o que qualquer FK do sistema (Reuniao.vendedorId,
+    // Lead.vendedorId...) espera. `id` acima é o MembroEmpresa.id (o vínculo
+    // com esta empresa), usado só pelas próprias telas de gestão de usuários.
+    usuarioId: m.usuario.id,
     nome: m.usuario.nome,
     email: m.usuario.email,
     papel: m.papel,

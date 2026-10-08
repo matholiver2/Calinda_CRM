@@ -46,10 +46,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Lead não encontrado" }, { status: 404 });
   }
 
+  const vendedorId = body?.vendedorId ?? (session.papel === "super_admin" ? null : session.id);
+  if (vendedorId) {
+    const membro = await prisma.membroEmpresa.findFirst({ where: { usuarioId: vendedorId, empresaId: ctx.empresaId } });
+    if (!membro) return NextResponse.json({ erro: "Responsável inválido" }, { status: 400 });
+  }
+
   const reuniao = await comRetryConexao(() => prisma.reuniao.create({
     data: {
       leadId,
-      vendedorId: body?.vendedorId ?? (session.papel === "super_admin" ? null : session.id),
+      vendedorId,
       dataHora,
       status: body?.status ?? "agendada",
       resultado: "pendente",

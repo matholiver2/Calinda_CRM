@@ -13,6 +13,14 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-08",
+    titulo: "Corrige \"Erro na operação\" ao escolher o responsável de uma reunião",
+    itens: [
+      "Achado o motivo real do erro ao criar/editar reunião: o campo \"Responsável\" mandava um ID interno errado assim que você escolhia alguém na lista, e o sistema rejeitava a reunião inteira sem explicação. Corrigido na raiz — escolher qualquer responsável agora funciona.",
+      "De brinde, se isso voltar a acontecer por qualquer outro motivo, agora aparece uma mensagem clara em vez de \"Erro na operação\" genérico.",
+    ],
+  },
+  {
+    data: "2026-10-08",
     titulo: "Agendar reunião direto da página do lead (não só de clientes)",
     itens: [
       "Novo botão \"Agendar reunião\" na página do lead/cliente — já abre o Novo evento com a pessoa certa selecionada, sem precisar ir pro Calendário e procurar o nome na lista.",

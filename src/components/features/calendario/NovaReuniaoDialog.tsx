@@ -137,7 +137,7 @@ function NovaReuniaoForm({
         <Select value={vendedorId} onChange={(e) => setVendedorId(e.target.value)}>
           <option value="">Não atribuído</option>
           {usuarios.map((u) => (
-            <option key={u.id} value={u.id}>
+            <option key={u.id} value={u.usuarioId ?? u.id}>
               {u.nome}
             </option>
           ))}
