@@ -204,7 +204,7 @@ function MensagemBubble({ mensagem }: { mensagem: Mensagem }) {
           "max-w-[80%] rounded-xl px-3.5 py-2.5 text-sm",
           isLead && "bg-surface-hover text-fg",
           isIa && "bg-accent-soft text-fg border border-accent/30",
-          !isLead && !isIa && "bg-blue-50 text-fg border border-blue-100"
+          !isLead && !isIa && "bg-info/15 text-fg border border-info/30"
         )}
       >
         <p>{mensagem.conteudo}</p>

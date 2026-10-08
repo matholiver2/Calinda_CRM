@@ -7,6 +7,7 @@ import { Save, Video, MessageCircle, MapPin, ExternalLink, ArrowRight, Trash2 } 
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Select, Input, Textarea } from "@/components/ui/Input";
+import { EmailsChipsInput } from "@/components/ui/EmailsChipsInput";
 import { cn } from "@/lib/utils";
 import { fetcher, apiPatch, apiDelete, ApiError } from "@/lib/fetcher";
 import { STATUS_LABEL, type ReuniaoCalendario } from "./types";
@@ -57,7 +58,7 @@ function ReuniaoForm({
   const [endereco, setEndereco] = useState(reuniao.endereco ?? "");
   const [titulo, setTitulo] = useState(reuniao.titulo ?? "");
   const [descricao, setDescricao] = useState(reuniao.descricao ?? "");
-  const [emailsConvite, setEmailsConvite] = useState(reuniao.emailsConvidados.join(", "));
+  const [emailsConvidados, setEmailsConvidados] = useState<string[]>(reuniao.emailsConvidados);
   const [loading, setLoading] = useState(false);
   const [excluindo, setExcluindo] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -70,10 +71,6 @@ function ReuniaoForm({
     }
     setLoading(true);
     try {
-      const emailsConvidados = emailsConvite
-        .split(",")
-        .map((e) => e.trim())
-        .filter((e) => e.includes("@"));
       await apiPatch(`/api/reunioes/${reuniao.id}`, {
         dataHora: new Date(dataHora).toISOString(),
         vendedorId: vendedorId || null,
@@ -231,12 +228,13 @@ function ReuniaoForm({
                 Sem link ainda — é gerado automaticamente se o responsável tiver o Google Calendar conectado, ou defina um fixo em Configurações → Agenda.
               </p>
             )}
-            <Input
-              className="mt-2"
-              value={emailsConvite}
-              onChange={(e) => setEmailsConvite(e.target.value)}
-              placeholder="E-mails extras pro convite, separados por vírgula"
-            />
+            <div className="mt-2">
+              <EmailsChipsInput
+                value={emailsConvidados}
+                onChange={setEmailsConvidados}
+                placeholder="E-mails extras pro convite"
+              />
+            </div>
           </>
         )}
         {modalidade === "whatsapp" && (

@@ -12,6 +12,15 @@ export type EntradaChangelog = {
 
 export const CHANGELOG: EntradaChangelog[] = [
   {
+    data: "2026-10-08",
+    titulo: "E-mails de convite em chips, ditado no onboarding e texto apagado corrigido",
+    itens: [
+      "O campo de e-mails extras do convite do Google Meet (Novo evento e Editar reunião) virou chips removíveis, igual ao convite do próprio Google — bem mais fácil de ver e corrigir que o texto corrido separado por vírgula.",
+      "Corrigido: em alguns temas, a mensagem que você digita no onboarding e no chat do Assistente aparecia com o texto quase apagado (fundo e letra quase da mesma cor). Agora tem contraste normal.",
+      "O onboarding ganhou o botão de ditar por voz, que já existia em outras telas.",
+    ],
+  },
+  {
     data: "2026-10-06",
     titulo: "IA escreve a mensagem dos follow-ups pendentes da régua",
     itens: [

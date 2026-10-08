@@ -6,6 +6,7 @@ import { Save, Video, MessageCircle, MapPin, ExternalLink, FileClock } from "luc
 import { Dialog } from "@/components/ui/Dialog";
 import { Button } from "@/components/ui/Button";
 import { Select, Input, Textarea } from "@/components/ui/Input";
+import { EmailsChipsInput } from "@/components/ui/EmailsChipsInput";
 import { cn } from "@/lib/utils";
 import { fetcher, apiPost, ApiError } from "@/lib/fetcher";
 import type { Lead, VendedorResumo } from "@/types";
@@ -41,7 +42,7 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
   const [dataHora, setDataHora] = useState("");
   const [modalidade, setModalidade] = useState<"google_meet" | "whatsapp" | "presencial">("whatsapp");
   const [endereco, setEndereco] = useState("");
-  const [emailsConvite, setEmailsConvite] = useState("");
+  const [emailsConvidados, setEmailsConvidados] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -80,10 +81,6 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
     }
     setLoading(true);
     try {
-      const emailsConvidados = emailsConvite
-        .split(",")
-        .map((e) => e.trim())
-        .filter((e) => e.includes("@"));
       await apiPost("/api/reunioes", {
         leadId,
         vendedorId: vendedorId || undefined,
@@ -191,12 +188,13 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
             </p>
           ))}
         {modalidade === "google_meet" && (
-          <Input
-            className="mt-2"
-            value={emailsConvite}
-            onChange={(e) => setEmailsConvite(e.target.value)}
-            placeholder="E-mails extras pro convite, separados por vírgula"
-          />
+          <div className="mt-2">
+            <EmailsChipsInput
+              value={emailsConvidados}
+              onChange={setEmailsConvidados}
+              placeholder="E-mails extras pro convite"
+            />
+          </div>
         )}
         {modalidade === "presencial" && (
           <Input

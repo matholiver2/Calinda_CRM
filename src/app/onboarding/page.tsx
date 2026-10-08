@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Send, SkipForward, CheckCircle2, PartyPopper } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Button } from "@/components/ui/Button";
+import { DictationButton } from "@/components/ui/DictationButton";
 import { apiPost, ApiError } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 
@@ -145,7 +146,7 @@ function OnboardingConteudo() {
               <div
                 className={cn(
                   "max-w-[80%] rounded-xl px-4 py-2.5 text-sm",
-                  t.autor === "usuario" ? "bg-blue-50 text-fg" : "bg-accent-soft text-fg"
+                  t.autor === "usuario" ? "bg-info/15 text-fg border border-info/30" : "bg-accent-soft text-fg"
                 )}
               >
                 {t.autor === "assistente" && (
@@ -199,6 +200,7 @@ function OnboardingConteudo() {
               disabled={carregando}
               className="w-full rounded-[10px] border border-border bg-surface px-3.5 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none focus:border-accent disabled:opacity-50"
             />
+            <DictationButton valorAtual={mensagem} onTexto={setMensagem} />
             <Button onClick={enviar} loading={enviando} disabled={!mensagem.trim()}>
               <Send className="h-3.5 w-3.5" />
             </Button>

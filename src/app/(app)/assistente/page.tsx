@@ -74,7 +74,7 @@ export default function AssistentePage() {
               <div
                 className={cn(
                   "max-w-[80%] rounded-xl px-4 py-2.5 text-sm",
-                  t.autor === "usuario" ? "bg-blue-50 text-fg" : "bg-accent-soft text-fg"
+                  t.autor === "usuario" ? "bg-info/15 text-fg border border-info/30" : "bg-accent-soft text-fg"
                 )}
               >
                 {t.autor === "assistente" && (

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, comRetryConexao } from "@/lib/db";
 import {
   requireSession,
   isSessionResponse,
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ erro: "Lead não encontrado" }, { status: 404 });
   }
 
-  const reuniao = await prisma.reuniao.create({
+  const reuniao = await comRetryConexao(() => prisma.reuniao.create({
     data: {
       leadId,
       vendedorId: body?.vendedorId ?? (session.papel === "super_admin" ? null : session.id),
@@ -63,7 +63,7 @@ export async function POST(req: Request) {
         : [],
     },
     include: { lead: true, vendedor: true },
-  });
+  }));
   void sincronizarReuniaoComGoogle(reuniao.id);
   void enviarConviteReuniaoPorEmail(reuniao.id);
   return NextResponse.json({ reuniao }, { status: 201 });
