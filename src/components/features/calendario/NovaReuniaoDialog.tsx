@@ -15,19 +15,30 @@ export function NovaReuniaoDialog({
   open,
   onClose,
   onSalvo,
+  leadIdInicial,
 }: {
   open: boolean;
   onClose: () => void;
   onSalvo: () => void;
+  /** Pré-seleciona (e trava) o cliente/lead — usado ao agendar direto da página dele. */
+  leadIdInicial?: string;
 }) {
   return (
     <Dialog open={open} onClose={onClose} title="Novo evento">
-      {open && <NovaReuniaoForm onClose={onClose} onSalvo={onSalvo} />}
+      {open && <NovaReuniaoForm onClose={onClose} onSalvo={onSalvo} leadIdInicial={leadIdInicial} />}
     </Dialog>
   );
 }
 
-function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: () => void }) {
+function NovaReuniaoForm({
+  onClose,
+  onSalvo,
+  leadIdInicial,
+}: {
+  onClose: () => void;
+  onSalvo: () => void;
+  leadIdInicial?: string;
+}) {
   const { data: leadsData } = useSWR<{ leads: Lead[] }>("/api/leads", fetcher);
   const { data: usuariosData } = useSWR<{ usuarios: VendedorResumo[] }>("/api/usuarios", fetcher);
   const { data: meData } = useSWR<{ usuario: { id: string } }>("/api/auth/me", fetcher);
@@ -37,7 +48,7 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
   const leads = leadsData?.leads ?? [];
   const usuarios = usuariosData?.usuarios ?? [];
 
-  const [leadId, setLeadId] = useState("");
+  const [leadId, setLeadId] = useState(leadIdInicial ?? "");
   const [vendedorId, setVendedorId] = useState(meData?.usuario?.id ?? "");
   const [dataHora, setDataHora] = useState("");
   const [modalidade, setModalidade] = useState<"google_meet" | "whatsapp" | "presencial">("whatsapp");
@@ -104,12 +115,18 @@ function NovaReuniaoForm({ onClose, onSalvo }: { onClose: () => void; onSalvo: (
   return (
     <form onSubmit={salvar} className="space-y-4">
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-fg-muted">Cliente</label>
-        <Select required value={leadId} onChange={(e) => setLeadId(e.target.value)}>
+        <label className="mb-1.5 block text-xs font-medium text-fg-muted">Lead / Cliente</label>
+        <Select
+          required
+          value={leadId}
+          onChange={(e) => setLeadId(e.target.value)}
+          disabled={!!leadIdInicial}
+        >
           <option value="">Selecionar...</option>
           {leads.map((l) => (
             <option key={l.id} value={l.id}>
               {l.nome}
+              {l.status !== "cliente" ? " (lead)" : ""}
             </option>
           ))}
         </Select>

@@ -13,6 +13,15 @@ export type EntradaChangelog = {
 export const CHANGELOG: EntradaChangelog[] = [
   {
     data: "2026-10-08",
+    titulo: "Agendar reunião direto da página do lead (não só de clientes)",
+    itens: [
+      "Novo botão \"Agendar reunião\" na página do lead/cliente — já abre o Novo evento com a pessoa certa selecionada, sem precisar ir pro Calendário e procurar o nome na lista.",
+      "O agendamento nunca dependeu de o lead já ser cliente (o campo no Calendário sempre listou todo mundo), mas não tinha esse atalho na página dele — agora tem, pra marcar a reunião e só depois decidir se vira cliente.",
+      "O campo de seleção no Calendário agora deixa claro quem ainda é lead (\"Fulano (lead)\") pra não dar a impressão de que é só pra clientes.",
+    ],
+  },
+  {
+    data: "2026-10-08",
     titulo: "E-mails de convite em chips, ditado no onboarding e texto apagado corrigido",
     itens: [
       "O campo de e-mails extras do convite do Google Meet (Novo evento e Editar reunião) virou chips removíveis, igual ao convite do próprio Google — bem mais fácil de ver e corrigir que o texto corrido separado por vírgula.",

@@ -20,6 +20,7 @@ import {
   File as FileIcon,
   AtSign,
   MapPinned,
+  CalendarPlus,
 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -27,6 +28,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { Select, Textarea } from "@/components/ui/Input";
 import { ChatThread } from "@/components/features/ChatThread";
+import { NovaReuniaoDialog } from "@/components/features/calendario/NovaReuniaoDialog";
 import { fetcher, apiPatch, apiPost, apiDelete, ApiError } from "@/lib/fetcher";
 import { formatarTelefone, statusLabel, formatarTamanhoArquivo } from "@/lib/utils";
 import type { Etapa, Lead } from "@/types";
@@ -52,6 +54,7 @@ export default function LeadDetalhePage({ params }: { params: Promise<{ id: stri
   });
   const { data: etapasData } = useSWR<{ etapas: Etapa[] }>("/api/etapas", fetcher);
   const [novaEtapa, setNovaEtapa] = useState("");
+  const [agendando, setAgendando] = useState(false);
 
   const lead = data?.lead;
   const etapas = etapasData?.etapas ?? [];
@@ -96,6 +99,9 @@ export default function LeadDetalhePage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button variant="secondary" size="sm" onClick={() => setAgendando(true)}>
+                  <CalendarPlus className="h-3.5 w-3.5" /> Agendar reunião
+                </Button>
                 <Link href={`/orcamentos?leadId=${id}`}>
                   <Button variant="secondary" size="sm">
                     <FileText className="h-3.5 w-3.5" /> Criar orçamento
@@ -201,6 +207,16 @@ export default function LeadDetalhePage({ params }: { params: Promise<{ id: stri
           <ArquivosCard leadId={id} />
         </div>
       </div>
+
+      <NovaReuniaoDialog
+        open={agendando}
+        onClose={() => setAgendando(false)}
+        leadIdInicial={id}
+        onSalvo={() => {
+          mutate(`/api/leads/${id}`);
+          mutate("/api/reunioes");
+        }}
+      />
     </div>
   );
 }
